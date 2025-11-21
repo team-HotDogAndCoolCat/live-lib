@@ -383,16 +383,23 @@ export function activate(context: vscode.ExtensionContext) {
           async () => metadataService.getMetadata(library)
         );
 
-        const lines = [
+        const detailLines = [
           `Name: ${library.name}`,
           `Version: ${library.version}`,
-          metadata?.description
-            ? `Description: ${metadata.description}`
-            : "Description: Not available.",
-          metadata?.homepage ? `Homepage: ${metadata.homepage}` : undefined,
-        ].filter(Boolean);
+        ];
 
-        const detail = lines.join("\n");
+        if (metadata?.description) {
+          detailLines.push("", "Description", metadata.description);
+        } else {
+          detailLines.push("", "Description", "Not available.");
+        }
+
+        if (metadata?.homepage) {
+          detailLines.push("", `Homepage: ${metadata.homepage}`);
+        }
+
+        const detail = detailLines.join("\n");
+
         const actions = ["Copy"];
         if (metadata?.homepage) {
           actions.unshift("Open Homepage");
