@@ -1,0 +1,85 @@
+{
+  "name": "lib-extension",
+  "displayName": "lib-extension",
+  "description": "manage library",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.106.1"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "libraryManager",
+          "title": "Libraries",
+          "icon": "resources/library.svg"
+        }
+      ]
+    },
+    "views": {
+      "libraryManager": [
+        {
+          "id": "libExplorer",
+          "name": "Dependencies"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "lib-extension.refreshLibraries",
+        "title": "라이브러리 새로고침"
+      },
+      {
+        "command": "lib-extension.showLibraryInfo",
+        "title": "라이브러리 세부 정보 보기"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "lib-extension.refreshLibraries",
+          "when": "view == libExplorer",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "lib-extension.showLibraryInfo",
+          "when": "view == libExplorer && viewItem == libraryItem",
+          "group": "inline"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.106.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "typescript-eslint": "^8.46.3",
+    "eslint": "^9.39.1",
+    "typescript": "^5.9.3",
+    "ts-loader": "^9.5.4",
+    "webpack": "^5.102.1",
+    "webpack-cli": "^6.0.1",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2"
+  }
+}
