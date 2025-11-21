@@ -399,6 +399,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         const detail = detailLines.join("\n");
+
         const actions = ["Copy"];
         if (metadata?.homepage) {
           actions.unshift("Open Homepage");
