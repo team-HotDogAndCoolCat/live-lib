@@ -15,11 +15,13 @@ interface LibraryInfo {
   scope: LibraryScope;
   packageJsonPath: string;
   workspaceFolder?: vscode.WorkspaceFolder;
+  latestVersion?: string;
 }
 
 interface LibraryMetadata {
   description?: string;
   homepage?: string;
+  latestVersion?: string;
 }
 
 class LibraryTreeItem extends vscode.TreeItem {
@@ -45,7 +47,7 @@ class LibraryTreeDataProvider
 
   private readonly watcher: vscode.FileSystemWatcher | undefined;
 
-  constructor() {
+  constructor(private readonly metadataService: LibraryMetadataService) {
     if (vscode.workspace.workspaceFolders?.length) {
       this.watcher =
         vscode.workspace.createFileSystemWatcher("**/package.json");
@@ -124,27 +126,65 @@ class LibraryTreeDataProvider
         return [this.createInfoItem("등록된 라이브러리가 없습니다.")];
       }
 
-      return libraries.map((lib) => {
-        const item = new LibraryTreeItem(
-          lib.name,
-          vscode.TreeItemCollapsibleState.None,
-          "library",
-          folder,
-          lib
-        );
-        item.description = lib.version;
-        item.tooltip = `${lib.name} (${lib.scope}) - ${lib.version}`;
-        item.iconPath = new vscode.ThemeIcon(
-          lib.scope === "devDependencies" ? "beaker" : "package"
-        );
-        item.contextValue = "libraryItem";
-        item.command = {
-          command: "lib-extension.showLibraryInfo",
-          title: "Show Library Info",
-          arguments: [lib],
-        };
-        return item;
-      });
+      const items = await Promise.all(
+        libraries.map(async (lib) => {
+          const metadata = await this.metadataService
+            .getMetadata(lib)
+            .catch(() => null);
+
+          const latestVersion = metadata?.latestVersion;
+          const cleanCurrent = normalizeVersion(lib.version);
+          const cleanLatest = latestVersion
+            ? normalizeVersion(latestVersion)
+            : undefined;
+
+          const isOutdated =
+            !!cleanCurrent &&
+            !!cleanLatest &&
+            compareSemver(cleanLatest, cleanCurrent) > 0;
+
+          lib.latestVersion = latestVersion;
+
+          const item = new LibraryTreeItem(
+            lib.name,
+            vscode.TreeItemCollapsibleState.None,
+            "library",
+            folder,
+            lib
+          );
+
+          item.description =
+            isOutdated && cleanLatest
+              ? `${cleanCurrent} → ${cleanLatest}`
+              : cleanCurrent ?? lib.version;
+
+          const tooltipParts = [
+            `${lib.name} (${lib.scope})`,
+            `Current: ${lib.version}`,
+          ];
+          if (latestVersion) {
+            tooltipParts.push(`Latest: ${latestVersion}`);
+          }
+          item.tooltip = tooltipParts.join(" • ");
+
+          item.iconPath = isOutdated
+            ? new vscode.ThemeIcon("arrow-circle-up")
+            : new vscode.ThemeIcon(
+                lib.scope === "devDependencies" ? "beaker" : "package"
+              );
+          item.contextValue = isOutdated
+            ? "libraryItemOutdated"
+            : "libraryItem";
+          item.command = {
+            command: "lib-extension.showLibraryInfo",
+            title: "Show Library Info",
+            arguments: [lib],
+          };
+          return item;
+        })
+      );
+
+      return items;
     } catch (error) {
       const label =
         error instanceof Error && error.message.includes("ENOENT")
@@ -298,6 +338,7 @@ class LibraryMetadataService implements vscode.Disposable {
         fallbackMetadata?.homepage ??
         parsed.homepage ??
         undefined,
+      latestVersion: latestTag ?? undefined,
     };
   }
 
@@ -351,9 +392,18 @@ function compareSemver(a: string, b: string) {
   return a.localeCompare(b);
 }
 
+function normalizeVersion(version: string | undefined) {
+  if (!version) {
+    return undefined;
+  }
+  const trimmed = version.trim();
+  const cleaned = trimmed.replace(/^[~^><=*\s]+/, "");
+  return cleaned || undefined;
+}
+
 export function activate(context: vscode.ExtensionContext) {
-  const treeDataProvider = new LibraryTreeDataProvider();
   const metadataService = new LibraryMetadataService();
+  const treeDataProvider = new LibraryTreeDataProvider(metadataService);
 
   context.subscriptions.push(
     treeDataProvider,
@@ -419,6 +469,56 @@ export function activate(context: vscode.ExtensionContext) {
         } else if (action === "Open Homepage" && metadata?.homepage) {
           vscode.env.openExternal(vscode.Uri.parse(metadata.homepage));
         }
+      }
+    ),
+    vscode.commands.registerCommand(
+      "lib-extension.updateLibrary",
+      async (arg?: LibraryTreeItem | LibraryInfo) => {
+        const library = arg instanceof LibraryTreeItem ? arg.library : arg;
+
+        if (!library) {
+          vscode.window.showWarningMessage(
+            "업데이트할 라이브러리를 찾을 수 없습니다."
+          );
+          return;
+        }
+
+        if (!library.workspaceFolder) {
+          vscode.window.showWarningMessage(
+            "워크스페이스 정보를 찾을 수 없어 업데이트를 실행할 수 없습니다."
+          );
+          return;
+        }
+
+        const metadata =
+          library.latestVersion && normalizeVersion(library.latestVersion)
+            ? { latestVersion: library.latestVersion }
+            : await metadataService.getMetadata(library);
+
+        const latestVersion = normalizeVersion(
+          metadata?.latestVersion ?? library.latestVersion
+        );
+
+        if (!latestVersion) {
+          vscode.window.showWarningMessage(
+            "최신 버전 정보를 가져올 수 없어 업데이트를 실행할 수 없습니다."
+          );
+          return;
+        }
+
+        const terminal = vscode.window.createTerminal({
+          name: `Update ${library.name}`,
+          cwd: library.workspaceFolder.uri.fsPath,
+        });
+
+        terminal.show();
+        terminal.sendText(`npm install ${library.name}@${latestVersion}`);
+
+        vscode.window.showInformationMessage(
+          `${library.name} 업데이트를 시작했습니다 (${latestVersion}).`
+        );
+
+        treeDataProvider.refresh();
       }
     )
   );
