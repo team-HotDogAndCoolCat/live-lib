@@ -38,7 +38,11 @@
       },
       {
         "command": "lib-extension.showLibraryInfo",
-        "title": "라이브러리 세부 정보 보기"
+        "title": "세부 정보 보기"
+      },
+      {
+        "command": "lib-extension.updateLibrary",
+        "title": "업데이트"
       }
     ],
     "menus": {
@@ -54,6 +58,16 @@
           "command": "lib-extension.showLibraryInfo",
           "when": "view == libExplorer && viewItem == libraryItem",
           "group": "inline"
+        },
+        {
+          "command": "lib-extension.showLibraryInfo",
+          "when": "view == libExplorer && viewItem == libraryItemOutdated",
+          "group": "inline"
+        },
+        {
+          "command": "lib-extension.updateLibrary",
+          "when": "view == libExplorer && viewItem == libraryItemOutdated",
+          "group": "inline@1"
         }
       ]
     }
