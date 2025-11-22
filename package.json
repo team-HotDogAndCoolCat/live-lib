@@ -38,11 +38,18 @@
       },
       {
         "command": "lib-extension.showLibraryInfo",
-        "title": "세부 정보 보기"
+        "title": "Show Details",
+        "icon": "$(info)"
       },
       {
         "command": "lib-extension.updateLibrary",
-        "title": "업데이트"
+        "title": "Update",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "lib-extension.deleteLibrary",
+        "title": "Delete",
+        "icon": "$(trash)"
       }
     ],
     "menus": {
@@ -57,17 +64,44 @@
         {
           "command": "lib-extension.showLibraryInfo",
           "when": "view == libExplorer && viewItem == libraryItem",
-          "group": "inline"
+          "group": "inline",
+          "icon": "$(info)"
         },
         {
           "command": "lib-extension.showLibraryInfo",
           "when": "view == libExplorer && viewItem == libraryItemOutdated",
-          "group": "inline"
+          "group": "inline",
+          "icon": "$(info)"
         },
         {
           "command": "lib-extension.updateLibrary",
           "when": "view == libExplorer && viewItem == libraryItemOutdated",
-          "group": "inline@1"
+          "group": "inline@1",
+          "icon": "$(arrow-up)"
+        },
+        {
+          "command": "lib-extension.showLibraryInfo",
+          "when": "view == libExplorer && viewItem == libraryItemUnused",
+          "group": "inline",
+          "icon": "$(info)"
+        },
+        {
+          "command": "lib-extension.deleteLibrary",
+          "when": "view == libExplorer && viewItem == libraryItem",
+          "group": "inline@2",
+          "icon": "$(trash)"
+        },
+        {
+          "command": "lib-extension.deleteLibrary",
+          "when": "view == libExplorer && viewItem == libraryItemOutdated",
+          "group": "inline@2",
+          "icon": "$(trash)"
+        },
+        {
+          "command": "lib-extension.deleteLibrary",
+          "when": "view == libExplorer && viewItem == libraryItemUnused",
+          "group": "inline@1",
+          "icon": "$(trash)"
         }
       ]
     }
