@@ -16,6 +16,7 @@ interface LibraryInfo {
   packageJsonPath: string;
   workspaceFolder?: vscode.WorkspaceFolder;
   latestVersion?: string;
+  isUsed?: boolean;
 }
 
 interface LibraryMetadata {
@@ -126,8 +127,11 @@ class LibraryTreeDataProvider
         return [this.createInfoItem("등록된 라이브러리가 없습니다.")];
       }
 
+      const usedLibraries = await this.checkLibraryUsage(libraries, folder);
+
       const items = await Promise.all(
         libraries.map(async (lib) => {
+          lib.isUsed = usedLibraries.has(lib.name);
           const metadata = await this.metadataService
             .getMetadata(lib)
             .catch(() => null);
@@ -153,10 +157,13 @@ class LibraryTreeDataProvider
             lib
           );
 
-          item.description =
-            isOutdated && cleanLatest
-              ? `${cleanCurrent} → ${cleanLatest}`
-              : cleanCurrent ?? lib.version;
+          if (isOutdated && cleanLatest) {
+            item.description = `${cleanCurrent} → ${cleanLatest}`;
+          } else if (!lib.isUsed) {
+            item.description = `${cleanCurrent ?? lib.version} (unused)`;
+          } else {
+            item.description = cleanCurrent ?? lib.version;
+          }
 
           const tooltipParts = [
             `${lib.name} (${lib.scope})`,
@@ -165,16 +172,28 @@ class LibraryTreeDataProvider
           if (latestVersion) {
             tooltipParts.push(`Latest: ${latestVersion}`);
           }
+          if (lib.isUsed === false) {
+            tooltipParts.push("Unused");
+          }
           item.tooltip = tooltipParts.join(" • ");
 
-          item.iconPath = isOutdated
-            ? new vscode.ThemeIcon("arrow-circle-up")
-            : new vscode.ThemeIcon(
-                lib.scope === "devDependencies" ? "beaker" : "package"
-              );
-          item.contextValue = isOutdated
-            ? "libraryItemOutdated"
-            : "libraryItem";
+          if (isOutdated) {
+            item.iconPath = new vscode.ThemeIcon("arrow-circle-up");
+          } else if (!lib.isUsed) {
+            item.iconPath = new vscode.ThemeIcon("circle-slash");
+          } else {
+            item.iconPath = new vscode.ThemeIcon(
+              lib.scope === "devDependencies" ? "beaker" : "package"
+            );
+          }
+
+          if (isOutdated) {
+            item.contextValue = "libraryItemOutdated";
+          } else if (!lib.isUsed) {
+            item.contextValue = "libraryItemUnused";
+          } else {
+            item.contextValue = "libraryItem";
+          }
           item.command = {
             command: "lib-extension.showLibraryInfo",
             title: "Show Library Info",
@@ -192,6 +211,56 @@ class LibraryTreeDataProvider
           : "라이브러리 정보를 불러오지 못했습니다.";
       return [this.createInfoItem(label)];
     }
+  }
+
+  private async checkLibraryUsage(
+    libraries: LibraryInfo[],
+    folder: vscode.WorkspaceFolder
+  ): Promise<Set<string>> {
+    const usedLibraries = new Set<string>();
+    const libraryNames = new Set(libraries.map((lib) => lib.name));
+
+    try {
+      const sourceFiles = await vscode.workspace.findFiles(
+        new vscode.RelativePattern(folder, "**/*.{js,jsx,ts,tsx,mjs,cjs}"),
+        "**/node_modules/**"
+      );
+
+      for (const file of sourceFiles) {
+        try {
+          const content = await fs.readFile(file.fsPath, "utf8");
+
+          for (const libName of libraryNames) {
+            if (usedLibraries.has(libName)) {
+              continue;
+            }
+
+            const escapedName = libName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const patterns = [
+              new RegExp(
+                `(?:import|require|from)\\s+['"]${escapedName}(?:/|['"])`,
+                "g"
+              ),
+              new RegExp(
+                `(?:import|require|from)\\s+['"]${escapedName}['"]`,
+                "g"
+              ),
+              new RegExp(`require\\(['"]${escapedName}(?:/|['"])\\)`, "g"),
+            ];
+
+            if (patterns.some((pattern) => pattern.test(content))) {
+              usedLibraries.add(libName);
+            }
+          }
+        } catch {
+          continue;
+        }
+      }
+    } catch {
+      return usedLibraries;
+    }
+
+    return usedLibraries;
   }
 
   private extractLibraries(
@@ -519,6 +588,73 @@ export function activate(context: vscode.ExtensionContext) {
         );
 
         treeDataProvider.refresh();
+      }
+    ),
+    vscode.commands.registerCommand(
+      "lib-extension.deleteLibrary",
+      async (arg?: LibraryTreeItem | LibraryInfo) => {
+        const library = arg instanceof LibraryTreeItem ? arg.library : arg;
+
+        if (!library) {
+          vscode.window.showWarningMessage(
+            "삭제할 라이브러리를 찾을 수 없습니다."
+          );
+          return;
+        }
+
+        if (!library.workspaceFolder) {
+          vscode.window.showWarningMessage(
+            "워크스페이스 정보를 찾을 수 없어 삭제를 실행할 수 없습니다."
+          );
+          return;
+        }
+
+        const confirm = await vscode.window.showWarningMessage(
+          `${library.name}을(를) 삭제하시겠습니까?`,
+          { modal: true },
+          "삭제"
+        );
+
+        if (confirm !== "삭제") {
+          return;
+        }
+
+        try {
+          const packageJsonPath = library.packageJsonPath;
+          const fileContents = await fs.readFile(packageJsonPath, "utf8");
+          const pkg = JSON.parse(fileContents);
+
+          const scope = library.scope;
+          if (pkg[scope] && typeof pkg[scope] === "object") {
+            delete pkg[scope][library.name];
+          }
+
+          await fs.writeFile(
+            packageJsonPath,
+            JSON.stringify(pkg, null, 2) + "\n",
+            "utf8"
+          );
+
+          const terminal = vscode.window.createTerminal({
+            name: `Delete ${library.name}`,
+            cwd: library.workspaceFolder.uri.fsPath,
+          });
+
+          terminal.show();
+          terminal.sendText(`npm uninstall ${library.name}`);
+
+          vscode.window.showInformationMessage(
+            `${library.name} 삭제를 시작했습니다.`
+          );
+
+          treeDataProvider.refresh();
+        } catch (error) {
+          vscode.window.showErrorMessage(
+            `라이브러리 삭제 중 오류가 발생했습니다: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          );
+        }
       }
     )
   );
