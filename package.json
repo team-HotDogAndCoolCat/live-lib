@@ -1,7 +1,7 @@
 {
-  "name": "lib-extension",
-  "displayName": "lib-extension",
-  "description": "manage library",
+  "name": "live-lib",
+  "displayName": "Live Lib",
+  "description": "Manage your project libraries with ease",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.106.1"
