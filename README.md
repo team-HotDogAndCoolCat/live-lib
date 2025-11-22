@@ -13,7 +13,7 @@ A VS Code extension for managing npm libraries in your project.
 
 ## Usage
 
-1. Click the Libraries icon in the Activity Bar of VS Code.
+1. Click the Live Lib icon in the Activity Bar of VS Code.
 2. All libraries in your project will be displayed.
 3. Click or right-click on each library to perform the following actions:
    - **Show Details**: View library information
@@ -38,7 +38,7 @@ This extension currently does not provide additional settings.
 
 ### 0.0.1
 
-Initial release of Library Manager
+Initial release of Live Lib
 
 - Display library list
 - View library details
@@ -63,7 +63,7 @@ VS Code 확장으로 프로젝트의 npm 라이브러리를 관리할 수 있는
 
 ## 사용 방법
 
-1. VS Code의 Activity Bar에서 Libraries 아이콘을 클릭합니다.
+1. VS Code의 Activity Bar에서 Live Lib 아이콘을 클릭합니다.
 2. 프로젝트의 모든 라이브러리 목록이 표시됩니다.
 3. 각 라이브러리를 클릭하거나 우클릭하여 다음 작업을 수행할 수 있습니다:
    - **세부 정보 보기**: 라이브러리 정보 확인
@@ -88,7 +88,7 @@ VS Code 확장으로 프로젝트의 npm 라이브러리를 관리할 수 있는
 
 ### 0.0.1
 
-Initial release of Library Manager
+Initial release of Live Lib
 
 - 라이브러리 목록 표시
 - 라이브러리 세부 정보 보기

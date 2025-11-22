@@ -2,7 +2,9 @@
   "name": "live-lib",
   "displayName": "Live Lib",
   "description": "Manage your project libraries with ease",
-  "version": "0.0.1",
+  "publisher": "gugitgugit",
+  "version": "1.0.0",
+  "icon": "logo.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/team-HotDogAndCoolCat/live-lib.git"
@@ -21,17 +23,18 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "libraryManager",
-          "title": "Libraries",
+          "id": "liveLib",
+          "title": "Live Lib",
           "icon": "resources/library.svg"
         }
       ]
     },
     "views": {
-      "libraryManager": [
+      "liveLib": [
         {
           "id": "libExplorer",
-          "name": "Dependencies"
+          "name": "Dependencies",
+          "icon": "resources/library.svg"
         }
       ]
     },
