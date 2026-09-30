@@ -384,17 +384,8 @@ class LibraryMetadataService implements vscode.Disposable {
     if (latestTag && parsed.versions && parsed.versions[latestTag]) {
       latestVersion = parsed.versions[latestTag];
     }
-    console.log(
-      `[lib-extension] latest tag for ${packageName}:`,
-      latestTag,
-      latestVersion
-    );
 
     const fallbackMetadata = this.findFallbackMetadata(parsed.versions);
-    console.log(
-      `[lib-extension] fallback candidate for ${packageName}:`,
-      fallbackMetadata
-    );
 
     return {
       description:
@@ -459,6 +450,19 @@ function compareSemver(a: string, b: string) {
   }
 
   return a.localeCompare(b);
+}
+
+// 터미널로 전달되는 값은 셸 메타문자가 없도록 npm 이름 규칙 기준으로 제한한다.
+const PACKAGE_NAME_PATTERN =
+  /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/i;
+const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]*$/;
+
+function isSafePackageName(name: string) {
+  return name.length <= 214 && PACKAGE_NAME_PATTERN.test(name);
+}
+
+function isSafeVersion(version: string) {
+  return VERSION_PATTERN.test(version);
 }
 
 function normalizeVersion(version: string | undefined) {
@@ -575,6 +579,13 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
 
+        if (!isSafePackageName(library.name) || !isSafeVersion(latestVersion)) {
+          vscode.window.showErrorMessage(
+            `허용되지 않는 패키지 이름 또는 버전이라 업데이트를 실행하지 않았습니다: ${library.name}@${latestVersion}`
+          );
+          return;
+        }
+
         const terminal = vscode.window.createTerminal({
           name: `Update ${library.name}`,
           cwd: library.workspaceFolder.uri.fsPath,
@@ -609,6 +620,13 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
 
+        if (!isSafePackageName(library.name)) {
+          vscode.window.showErrorMessage(
+            `허용되지 않는 패키지 이름이라 삭제를 실행하지 않았습니다: ${library.name}`
+          );
+          return;
+        }
+
         const confirm = await vscode.window.showWarningMessage(
           `${library.name}을(를) 삭제하시겠습니까?`,
           { modal: true },
@@ -619,42 +637,18 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        try {
-          const packageJsonPath = library.packageJsonPath;
-          const fileContents = await fs.readFile(packageJsonPath, "utf8");
-          const pkg = JSON.parse(fileContents);
+        // package.json 수정은 npm uninstall에 맡긴다 (직접 수정하면 들여쓰기 등 포맷이 바뀜)
+        const terminal = vscode.window.createTerminal({
+          name: `Delete ${library.name}`,
+          cwd: library.workspaceFolder.uri.fsPath,
+        });
 
-          const scope = library.scope;
-          if (pkg[scope] && typeof pkg[scope] === "object") {
-            delete pkg[scope][library.name];
-          }
+        terminal.show();
+        terminal.sendText(`npm uninstall ${library.name}`);
 
-          await fs.writeFile(
-            packageJsonPath,
-            JSON.stringify(pkg, null, 2) + "\n",
-            "utf8"
-          );
-
-          const terminal = vscode.window.createTerminal({
-            name: `Delete ${library.name}`,
-            cwd: library.workspaceFolder.uri.fsPath,
-          });
-
-          terminal.show();
-          terminal.sendText(`npm uninstall ${library.name}`);
-
-          vscode.window.showInformationMessage(
-            `${library.name} 삭제를 시작했습니다.`
-          );
-
-          treeDataProvider.refresh();
-        } catch (error) {
-          vscode.window.showErrorMessage(
-            `라이브러리 삭제 중 오류가 발생했습니다: ${
-              error instanceof Error ? error.message : String(error)
-            }`
-          );
-        }
+        vscode.window.showInformationMessage(
+          `${library.name} 삭제를 시작했습니다.`
+        );
       }
     )
   );

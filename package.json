@@ -1,19 +1,37 @@
 {
   "name": "live-lib",
   "displayName": "Live Lib",
-  "description": "Manage your project libraries with ease",
+  "description": "See outdated and unused npm dependencies in the sidebar, then update or remove them in one click",
   "publisher": "gugitgugit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "icon": "logo.png",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/team-HotDogAndCoolCat/live-lib.git"
   },
+  "bugs": {
+    "url": "https://github.com/team-HotDogAndCoolCat/live-lib/issues"
+  },
+  "homepage": "https://github.com/team-HotDogAndCoolCat/live-lib#readme",
   "engines": {
-    "vscode": "^1.106.1"
+    "vscode": "^1.74.0"
   },
   "categories": [
+    "Visualization",
     "Other"
+  ],
+  "keywords": [
+    "npm",
+    "dependencies",
+    "package.json",
+    "outdated",
+    "unused",
+    "update",
+    "uninstall",
+    "node_modules",
+    "library",
+    "package manager"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -125,16 +143,16 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.106.1",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "typescript-eslint": "^8.46.3",
-    "eslint": "^9.39.1",
-    "typescript": "^5.9.3",
-    "ts-loader": "^9.5.4",
-    "webpack": "^5.102.1",
-    "webpack-cli": "^6.0.1",
+    "@types/vscode": "^1.74.0",
     "@vscode/test-cli": "^0.0.12",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.39.1",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.3",
+    "webpack": "^5.102.1",
+    "webpack-cli": "^6.0.1"
   }
 }
