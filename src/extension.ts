@@ -646,42 +646,18 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        try {
-          const packageJsonPath = library.packageJsonPath;
-          const fileContents = await fs.readFile(packageJsonPath, "utf8");
-          const pkg = JSON.parse(fileContents);
+        // package.json 수정은 npm uninstall에 맡긴다 (직접 수정하면 들여쓰기 등 포맷이 바뀜)
+        const terminal = vscode.window.createTerminal({
+          name: `Delete ${library.name}`,
+          cwd: library.workspaceFolder.uri.fsPath,
+        });
 
-          const scope = library.scope;
-          if (pkg[scope] && typeof pkg[scope] === "object") {
-            delete pkg[scope][library.name];
-          }
+        terminal.show();
+        terminal.sendText(`npm uninstall ${library.name}`);
 
-          await fs.writeFile(
-            packageJsonPath,
-            JSON.stringify(pkg, null, 2) + "\n",
-            "utf8"
-          );
-
-          const terminal = vscode.window.createTerminal({
-            name: `Delete ${library.name}`,
-            cwd: library.workspaceFolder.uri.fsPath,
-          });
-
-          terminal.show();
-          terminal.sendText(`npm uninstall ${library.name}`);
-
-          vscode.window.showInformationMessage(
-            `${library.name} 삭제를 시작했습니다.`
-          );
-
-          treeDataProvider.refresh();
-        } catch (error) {
-          vscode.window.showErrorMessage(
-            `라이브러리 삭제 중 오류가 발생했습니다: ${
-              error instanceof Error ? error.message : String(error)
-            }`
-          );
-        }
+        vscode.window.showInformationMessage(
+          `${library.name} 삭제를 시작했습니다.`
+        );
       }
     )
   );
