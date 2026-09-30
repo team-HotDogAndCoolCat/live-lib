@@ -384,17 +384,8 @@ class LibraryMetadataService implements vscode.Disposable {
     if (latestTag && parsed.versions && parsed.versions[latestTag]) {
       latestVersion = parsed.versions[latestTag];
     }
-    console.log(
-      `[lib-extension] latest tag for ${packageName}:`,
-      latestTag,
-      latestVersion
-    );
 
     const fallbackMetadata = this.findFallbackMetadata(parsed.versions);
-    console.log(
-      `[lib-extension] fallback candidate for ${packageName}:`,
-      fallbackMetadata
-    );
 
     return {
       description:
