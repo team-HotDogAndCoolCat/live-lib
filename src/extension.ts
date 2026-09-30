@@ -461,6 +461,19 @@ function compareSemver(a: string, b: string) {
   return a.localeCompare(b);
 }
 
+// 터미널로 전달되는 값은 셸 메타문자가 없도록 npm 이름 규칙 기준으로 제한한다.
+const PACKAGE_NAME_PATTERN =
+  /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/i;
+const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]*$/;
+
+function isSafePackageName(name: string) {
+  return name.length <= 214 && PACKAGE_NAME_PATTERN.test(name);
+}
+
+function isSafeVersion(version: string) {
+  return VERSION_PATTERN.test(version);
+}
+
 function normalizeVersion(version: string | undefined) {
   if (!version) {
     return undefined;
@@ -575,6 +588,13 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
 
+        if (!isSafePackageName(library.name) || !isSafeVersion(latestVersion)) {
+          vscode.window.showErrorMessage(
+            `허용되지 않는 패키지 이름 또는 버전이라 업데이트를 실행하지 않았습니다: ${library.name}@${latestVersion}`
+          );
+          return;
+        }
+
         const terminal = vscode.window.createTerminal({
           name: `Update ${library.name}`,
           cwd: library.workspaceFolder.uri.fsPath,
@@ -605,6 +625,13 @@ export function activate(context: vscode.ExtensionContext) {
         if (!library.workspaceFolder) {
           vscode.window.showWarningMessage(
             "워크스페이스 정보를 찾을 수 없어 삭제를 실행할 수 없습니다."
+          );
+          return;
+        }
+
+        if (!isSafePackageName(library.name)) {
+          vscode.window.showErrorMessage(
+            `허용되지 않는 패키지 이름이라 삭제를 실행하지 않았습니다: ${library.name}`
           );
           return;
         }
