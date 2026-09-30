@@ -15,13 +15,14 @@ A VS Code extension for managing npm libraries in your project.
 
 1. Click the Live Lib icon in the Activity Bar of VS Code.
 2. All libraries in your project will be displayed.
-3. Click or right-click on each library to perform the following actions:
+3. Click a library to see its details, or use the buttons that appear when you hover over it:
    - **Show Details**: View library information
-   - **Update**: Update to the latest version (if available)
+   - **Update**: Update to the latest version (shown only when a newer version exists)
    - **Delete**: Remove the library
 
 ## Requirements
 
+- VS Code 1.74 or later
 - Node.js project (requires `package.json` file)
 - npm package manager
 
@@ -33,18 +34,12 @@ This extension currently does not provide additional settings.
 
 - Library usage detection is based on static analysis, so dynamic imports or indirect references may not be detected.
 - Library usage checking may take time for large projects.
+- Tools that are not imported from code (for example `typescript`, `eslint`, `@types/*`) are shown as unused.
+- The outdated check compares against the version range written in `package.json`, not the version actually installed.
 
 ## Release Notes
 
-### 0.0.1
-
-Initial release of Live Lib
-
-- Display library list
-- View library details
-- Show update availability and update functionality
-- Detect unused libraries
-- Delete library functionality
+See [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -65,13 +60,14 @@ VS Code 확장으로 프로젝트의 npm 라이브러리를 관리할 수 있는
 
 1. VS Code의 Activity Bar에서 Live Lib 아이콘을 클릭합니다.
 2. 프로젝트의 모든 라이브러리 목록이 표시됩니다.
-3. 각 라이브러리를 클릭하거나 우클릭하여 다음 작업을 수행할 수 있습니다:
+3. 라이브러리를 클릭하면 세부 정보가 열리고, 마우스를 올리면 나타나는 버튼으로 다음 작업을 할 수 있습니다:
    - **세부 정보 보기**: 라이브러리 정보 확인
-   - **업데이트**: 최신 버전으로 업데이트 (업데이트 가능한 경우)
+   - **업데이트**: 최신 버전으로 업데이트 (새 버전이 있을 때만 표시)
    - **삭제**: 라이브러리 제거
 
 ## 요구사항
 
+- VS Code 1.74 이상
 - Node.js 프로젝트 (`package.json` 파일 필요)
 - npm 패키지 매니저
 
@@ -83,15 +79,9 @@ VS Code 확장으로 프로젝트의 npm 라이브러리를 관리할 수 있는
 
 - 라이브러리 사용 여부 감지는 정적 분석을 기반으로 하므로, 동적 import나 간접 참조는 감지하지 못할 수 있습니다.
 - 대규모 프로젝트의 경우 라이브러리 사용 여부 검사에 시간이 걸릴 수 있습니다.
+- 코드에서 import하지 않는 도구(`typescript`, `eslint`, `@types/*` 등)는 미사용으로 표시됩니다.
+- 업데이트 여부는 실제 설치된 버전이 아니라 `package.json`에 적힌 버전 범위를 기준으로 판단합니다.
 
 ## 릴리즈 노트
 
-### 0.0.1
-
-Initial release of Live Lib
-
-- 라이브러리 목록 표시
-- 라이브러리 세부 정보 보기
-- 업데이트 가능 여부 표시 및 업데이트 기능
-- 미사용 라이브러리 감지
-- 라이브러리 삭제 기능
+[CHANGELOG.md](CHANGELOG.md)를 참고하세요.
