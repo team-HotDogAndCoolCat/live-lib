@@ -1,23 +1,36 @@
-export function compareSemver(a: string, b: string) {
-  const parse = (version: string) =>
-    version.split(".").map((part) => Number(part.replace(/\D+/g, "")) || 0);
+import * as semver from "semver";
 
-  const aParts = parse(a);
-  const bParts = parse(b);
-
-  for (let i = 0; i < Math.max(aParts.length, bParts.length); i += 1) {
-    const aValue = aParts[i] ?? 0;
-    const bValue = bParts[i] ?? 0;
-
-    if (aValue > bValue) {
-      return 1;
-    }
-    if (aValue < bValue) {
-      return -1;
-    }
+/**
+ * 비교에 쓸 현재 버전을 정한다.
+ * 설치된 버전이 있으면 그 값을, 없으면 package.json 범위가 허용하는 최소 버전을 쓴다.
+ * workspace:, file:, git URL, 태그 이름("latest") 처럼 버전 범위가 아니거나,
+ * "*"처럼 아무 버전이나 허용하는 범위는 비교할 수 없으므로 undefined를 돌려준다.
+ */
+export function resolveCurrentVersion(
+  declaredRange: string,
+  installedVersion?: string
+): string | undefined {
+  const installed = installedVersion && semver.valid(installedVersion);
+  if (installed) {
+    return installed;
   }
 
-  return a.localeCompare(b);
+  const range = semver.validRange(declaredRange);
+  if (!range || range === "*") {
+    return undefined;
+  }
+
+  return semver.minVersion(range)?.version;
+}
+
+export function isOutdated(
+  currentVersion: string | undefined,
+  latestVersion: string | undefined
+) {
+  if (!currentVersion || !latestVersion || !semver.valid(latestVersion)) {
+    return false;
+  }
+  return semver.gt(latestVersion, currentVersion);
 }
 
 export function normalizeVersion(version: string | undefined) {

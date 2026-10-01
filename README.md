@@ -41,7 +41,6 @@ This extension currently does not provide additional settings.
 - Library usage detection is based on static analysis, so dynamic imports or indirect references may not be detected.
 - Library usage checking may take time for large projects.
 - Tools that are not imported from code (for example `typescript`, `eslint`, `@types/*`) are shown as unused.
-- The outdated check compares against the version range written in `package.json`, not the version actually installed.
 
 ## Release Notes
 

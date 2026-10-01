@@ -5,7 +5,8 @@ import type { LibraryInfo } from "./types";
 import type { LibraryMetadataService } from "./registry";
 import { extractLibraries } from "./packageJson";
 import { findImportedLibraries } from "./usage";
-import { compareSemver, normalizeVersion } from "./version";
+import { readInstalledVersion } from "./installed";
+import { buildLibraryView } from "./libraryView";
 
 type TreeItemType = "workspace" | "library" | "info";
 
@@ -116,23 +117,15 @@ export class LibraryTreeDataProvider
       const items = await Promise.all(
         libraries.map(async (lib) => {
           lib.isUsed = usedLibraries.has(lib.name);
-          const metadata = await this.metadataService
-            .getMetadata(lib)
-            .catch(() => null);
+          const [metadata, installedVersion] = await Promise.all([
+            this.metadataService.getMetadata(lib).catch(() => null),
+            readInstalledVersion(folder.uri.fsPath, lib.name),
+          ]);
 
-          const latestVersion = metadata?.latestVersion;
-          const cleanCurrent = normalizeVersion(lib.version);
-          const cleanLatest = latestVersion
-            ? normalizeVersion(latestVersion)
-            : undefined;
+          lib.installedVersion = installedVersion;
+          lib.latestVersion = metadata?.latestVersion;
 
-          const isOutdated =
-            !!cleanCurrent &&
-            !!cleanLatest &&
-            compareSemver(cleanLatest, cleanCurrent) > 0;
-
-          lib.latestVersion = latestVersion;
-
+          const view = buildLibraryView(lib);
           const item = new LibraryTreeItem(
             lib.name,
             vscode.TreeItemCollapsibleState.None,
@@ -140,44 +133,10 @@ export class LibraryTreeDataProvider
             folder,
             lib
           );
-
-          if (isOutdated && cleanLatest) {
-            item.description = `${cleanCurrent} → ${cleanLatest}`;
-          } else if (!lib.isUsed) {
-            item.description = `${cleanCurrent ?? lib.version} (unused)`;
-          } else {
-            item.description = cleanCurrent ?? lib.version;
-          }
-
-          const tooltipParts = [
-            `${lib.name} (${lib.scope})`,
-            `Current: ${lib.version}`,
-          ];
-          if (latestVersion) {
-            tooltipParts.push(`Latest: ${latestVersion}`);
-          }
-          if (lib.isUsed === false) {
-            tooltipParts.push("Unused");
-          }
-          item.tooltip = tooltipParts.join(" • ");
-
-          if (isOutdated) {
-            item.iconPath = new vscode.ThemeIcon("arrow-circle-up");
-          } else if (!lib.isUsed) {
-            item.iconPath = new vscode.ThemeIcon("circle-slash");
-          } else {
-            item.iconPath = new vscode.ThemeIcon(
-              lib.scope === "devDependencies" ? "beaker" : "package"
-            );
-          }
-
-          if (isOutdated) {
-            item.contextValue = "libraryItemOutdated";
-          } else if (!lib.isUsed) {
-            item.contextValue = "libraryItemUnused";
-          } else {
-            item.contextValue = "libraryItem";
-          }
+          item.description = view.description;
+          item.tooltip = view.tooltip;
+          item.iconPath = new vscode.ThemeIcon(view.icon);
+          item.contextValue = view.contextValue;
           item.command = {
             command: "lib-extension.showLibraryInfo",
             title: "Show Library Info",
