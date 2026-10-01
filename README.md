@@ -13,7 +13,7 @@ A VS Code extension for managing npm libraries in your project.
 - **View Library List**: See all project dependencies at a glance
 - **View Details**: Check description, version, and homepage information for each library
 - **Update Availability**: Compare with the latest version to see which libraries can be updated
-- **Update Libraries**: Update to the latest version
+- **Update Libraries**: Update to the latest version. Major updates outside your `package.json` range ask for confirmation first and offer the latest version within the range instead
 - **Detect Unused Libraries**: Identify libraries that are not actually used in the project
 - **Delete Libraries**: Remove unnecessary libraries
 

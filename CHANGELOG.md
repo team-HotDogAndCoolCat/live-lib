@@ -6,6 +6,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
+### Added
+
+- Major update warning. When the latest version is outside the range in `package.json` (for example `^18.0.0` → 19.x, or `^0.2.0` → 0.3.0), the tree shows `(major)` with a warning icon, and Update asks for confirmation first. You can update to the latest version, update to the highest version within the current range instead, or open the package homepage to check the changes.
+
 ### Fixed
 
 - The outdated check now uses the version actually installed in `node_modules` instead of the lowest version allowed by the `package.json` range. Previously `^1.2.0` was compared as 1.2.0 even when 1.9.0 was installed. When a package is not installed, the range is still used.
