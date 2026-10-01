@@ -1,7 +1,7 @@
 import type * as vscode from "vscode";
 import * as https from "https";
 import type { LibraryInfo, LibraryMetadata } from "./types";
-import { compareSemver } from "./version";
+import * as semver from "semver";
 
 interface VersionMetadata {
   description?: string;
@@ -112,7 +112,9 @@ function findFallbackMetadata(
     return null;
   }
 
-  const sortedKeys = Object.keys(versions).sort((a, b) => compareSemver(b, a));
+  const sortedKeys = Object.keys(versions)
+    .filter((key) => semver.valid(key))
+    .sort(semver.rcompare);
 
   for (const key of sortedKeys) {
     const candidate = versions[key];

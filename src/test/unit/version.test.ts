@@ -1,9 +1,10 @@
 import * as assert from "assert";
 import {
-  compareSemver,
+  isOutdated,
   isSafePackageName,
   isSafeVersion,
   normalizeVersion,
+  resolveCurrentVersion,
 } from "../../version";
 
 suite("normalizeVersion", () => {
@@ -21,20 +22,57 @@ suite("normalizeVersion", () => {
   });
 });
 
-suite("compareSemver", () => {
-  test("숫자 단위로 비교한다", () => {
-    assert.strictEqual(compareSemver("1.10.0", "1.9.0"), 1);
-    assert.strictEqual(compareSemver("1.9.0", "1.10.0"), -1);
-    assert.strictEqual(compareSemver("2.0.0", "1.99.99"), 1);
+suite("resolveCurrentVersion", () => {
+  test("설치된 버전이 있으면 그 버전을 쓴다", () => {
+    // package.json에는 ^1.2.0이지만 실제로는 1.9.0이 설치된 경우
+    assert.strictEqual(resolveCurrentVersion("^1.2.0", "1.9.0"), "1.9.0");
   });
 
-  test("같은 버전은 0", () => {
-    assert.strictEqual(compareSemver("1.2.3", "1.2.3"), 0);
+  test("설치되지 않았으면 범위가 허용하는 최소 버전을 쓴다", () => {
+    assert.strictEqual(resolveCurrentVersion("^1.2.0"), "1.2.0");
+    assert.strictEqual(resolveCurrentVersion("~3.4.5"), "3.4.5");
+    assert.strictEqual(resolveCurrentVersion("1.x"), "1.0.0");
+    assert.strictEqual(resolveCurrentVersion(">=2.1.0 <3"), "2.1.0");
   });
 
-  test("숫자가 같으면 문자열 비교로 순서를 정한다", () => {
-    // 빈 자리는 0으로 보므로 1.2와 1.2.0은 숫자상 같고, 문자열이 짧은 쪽이 앞선다
-    assert.ok(compareSemver("1.2", "1.2.0") < 0);
+  test("설치된 버전이 semver가 아니면 범위로 판단한다", () => {
+    assert.strictEqual(resolveCurrentVersion("^1.2.0", "not-a-version"), "1.2.0");
+  });
+
+  test("비교할 수 없는 범위는 undefined", () => {
+    for (const range of [
+      "*",
+      "latest",
+      "workspace:*",
+      "file:../local",
+      "github:user/repo",
+      "npm:other@^1.0.0",
+    ]) {
+      assert.strictEqual(resolveCurrentVersion(range), undefined, range);
+    }
+  });
+});
+
+suite("isOutdated", () => {
+  test("최신 버전이 더 높으면 true", () => {
+    assert.ok(isOutdated("1.9.0", "2.0.0"));
+    assert.ok(isOutdated("1.9.0", "1.10.0"));
+  });
+
+  test("같거나 낮으면 false", () => {
+    assert.ok(!isOutdated("2.0.0", "2.0.0"));
+    assert.ok(!isOutdated("2.1.0", "2.0.0"));
+  });
+
+  test("프리릴리스는 정식 버전보다 낮다", () => {
+    assert.ok(isOutdated("2.0.0-beta.1", "2.0.0"));
+    assert.ok(!isOutdated("2.0.0", "2.0.0-beta.1"));
+  });
+
+  test("값이 없거나 최신 버전이 semver가 아니면 false", () => {
+    assert.ok(!isOutdated(undefined, "2.0.0"));
+    assert.ok(!isOutdated("1.0.0", undefined));
+    assert.ok(!isOutdated("1.0.0", "garbage"));
   });
 });
 

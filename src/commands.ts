@@ -54,7 +54,11 @@ async function showLibraryInfo(
     async () => metadataService.getMetadata(library)
   );
 
-  const detailLines = [`Name: ${library.name}`, `Version: ${library.version}`];
+  const detailLines = [
+    `Name: ${library.name}`,
+    `Installed: ${library.installedVersion ?? "Not installed"}`,
+    `Declared: ${library.version}`,
+  ];
 
   if (metadata?.description) {
     detailLines.push("", "Description", metadata.description);
