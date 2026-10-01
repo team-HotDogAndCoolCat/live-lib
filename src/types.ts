@@ -21,4 +21,6 @@ export interface LibraryMetadata {
   description?: string;
   homepage?: string;
   latestVersion?: string;
+  /** 레지스트리에 배포된 모든 버전 (semver 형식만) */
+  versions?: string[];
 }
