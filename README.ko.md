@@ -30,7 +30,7 @@ VS Code 확장으로 프로젝트의 npm 라이브러리를 관리할 수 있는
 
 - VS Code 1.74 이상
 - Node.js 프로젝트 (`package.json` 파일 필요)
-- npm 패키지 매니저
+- npm, pnpm, yarn, bun 중 하나. `package.json`의 `packageManager` 필드나 lockfile로 패키지 매니저를 감지하고, 업데이트·삭제 시 그에 맞는 명령(예: `pnpm add` / `pnpm remove`)을 실행합니다.
 
 ## 확장 설정
 

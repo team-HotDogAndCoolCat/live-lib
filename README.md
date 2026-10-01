@@ -30,7 +30,7 @@ A VS Code extension for managing npm libraries in your project.
 
 - VS Code 1.74 or later
 - Node.js project (requires `package.json` file)
-- npm package manager
+- npm, pnpm, yarn or bun. The package manager is detected from the `packageManager` field in `package.json` or from the lockfile, and Update / Delete run the matching command (for example `pnpm add` / `pnpm remove`).
 
 ## Extension Settings
 

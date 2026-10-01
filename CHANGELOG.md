@@ -4,6 +4,17 @@ All notable changes to the "Live Lib" extension will be documented in this file.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- pnpm, yarn and bun support. The package manager is detected from the `packageManager` field in `package.json`, then from the lockfile in the project or a parent folder (for monorepo packages). Update and Delete run the matching command, so a pnpm or yarn project no longer gets an unwanted `package-lock.json`. The detected package manager is shown next to each workspace folder.
+
+### Changed
+
+- Updating a devDependency now passes the dev flag (for example `npm install --save-dev`), so it always stays in `devDependencies`.
+- The Delete confirmation shows the exact command that will run.
+
 ## [1.1.0] - 2026-10-01
 
 ### Added

@@ -8,6 +8,7 @@ import { classifyUsage, type UsageEvidence } from "./usage";
 import { collectUsageEvidence } from "./usageEvidence";
 import { readInstalledVersion } from "./installed";
 import { buildLibraryView } from "./libraryView";
+import { detectPackageManager } from "./packageManager";
 
 type TreeItemType = "workspace" | "library" | "info";
 
@@ -69,7 +70,7 @@ export class LibraryTreeDataProvider
     return [];
   }
 
-  private getWorkspaceItems(): LibraryTreeItem[] {
+  private async getWorkspaceItems(): Promise<LibraryTreeItem[]> {
     const folders = vscode.workspace.workspaceFolders ?? [];
 
     if (!folders.length) {
@@ -82,17 +83,26 @@ export class LibraryTreeDataProvider
       return [item];
     }
 
-    return folders.map((folder) => {
-      const item = new LibraryTreeItem(
-        folder.name,
-        vscode.TreeItemCollapsibleState.Collapsed,
-        "workspace",
-        folder
-      );
-      item.tooltip = folder.uri.fsPath;
-      item.iconPath = new vscode.ThemeIcon("root-folder");
-      return item;
-    });
+    return Promise.all(
+      folders.map(async (folder) => {
+        const item = new LibraryTreeItem(
+          folder.name,
+          vscode.TreeItemCollapsibleState.Collapsed,
+          "workspace",
+          folder
+        );
+        item.iconPath = new vscode.ThemeIcon("root-folder");
+        item.tooltip = folder.uri.fsPath;
+
+        const pkg = await readPackageJson(folder);
+        if (pkg) {
+          const pm = await detectPackageManager(folder.uri.fsPath, pkg);
+          item.description = pm.name;
+          item.tooltip = `${folder.uri.fsPath}\nPackage manager: ${pm.name} (${pm.source})`;
+        }
+        return item;
+      })
+    );
   }
 
   private async getLibrariesForWorkspace(
@@ -108,6 +118,7 @@ export class LibraryTreeDataProvider
       const fileContents = await fs.readFile(packageJsonPath, "utf8");
       const pkg = JSON.parse(fileContents);
       const libraries = extractLibraries(pkg, folder, packageJsonPath);
+      const packageManager = await detectPackageManager(folder.uri.fsPath, pkg);
 
       if (!libraries.length) {
         return [this.createInfoItem("등록된 라이브러리가 없습니다.")];
@@ -124,6 +135,7 @@ export class LibraryTreeDataProvider
           ]);
 
           lib.installedVersion = installedVersion;
+          lib.packageManager = packageManager;
           lib.latestVersion = metadata?.latestVersion;
 
           const view = buildLibraryView(lib, metadata?.versions);
@@ -189,5 +201,19 @@ export class LibraryTreeDataProvider
     item.iconPath = new vscode.ThemeIcon("info");
     item.tooltip = label;
     return item;
+  }
+}
+
+async function readPackageJson(
+  folder: vscode.WorkspaceFolder
+): Promise<Record<string, unknown> | undefined> {
+  try {
+    const contents = await fs.readFile(
+      path.join(folder.uri.fsPath, "package.json"),
+      "utf8"
+    );
+    return JSON.parse(contents);
+  } catch {
+    return undefined;
   }
 }

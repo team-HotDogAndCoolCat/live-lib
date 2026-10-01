@@ -1,6 +1,13 @@
 import * as vscode from "vscode";
+import { promises as fs } from "fs";
 import type { LibraryInfo } from "./types";
 import type { LibraryMetadataService } from "./registry";
+import {
+  buildInstallCommand,
+  buildRemoveCommand,
+  detectPackageManager,
+  type PackageManager,
+} from "./packageManager";
 import { LibraryTreeDataProvider, LibraryTreeItem } from "./libraryTree";
 import {
   isSafePackageName,
@@ -171,7 +178,10 @@ async function updateLibrary(
   });
 
   terminal.show();
-  terminal.sendText(`npm install ${library.name}@${targetVersion}`);
+  const packageManager = await resolvePackageManager(library);
+  terminal.sendText(
+    buildInstallCommand(packageManager, library.name, targetVersion, library.scope)
+  );
 
   vscode.window.showInformationMessage(
     `${library.name} 업데이트를 시작했습니다 (${targetVersion}).`
@@ -248,9 +258,13 @@ async function deleteLibrary(arg: LibraryCommandArg) {
     return;
   }
 
+  const removeCommand = buildRemoveCommand(
+    await resolvePackageManager(library),
+    library.name
+  );
   const confirm = await vscode.window.showWarningMessage(
     `${library.name}을(를) 삭제하시겠습니까?`,
-    { modal: true },
+    { modal: true, detail: `터미널에서 \`${removeCommand}\`를 실행합니다.` },
     "삭제"
   );
 
@@ -258,14 +272,36 @@ async function deleteLibrary(arg: LibraryCommandArg) {
     return;
   }
 
-  // package.json 수정은 npm uninstall에 맡긴다 (직접 수정하면 들여쓰기 등 포맷이 바뀜)
+  // package.json 수정은 패키지 매니저에 맡긴다 (직접 수정하면 들여쓰기 등 포맷이 바뀜)
   const terminal = vscode.window.createTerminal({
     name: `Delete ${library.name}`,
     cwd: library.workspaceFolder.uri.fsPath,
   });
 
   terminal.show();
-  terminal.sendText(`npm uninstall ${library.name}`);
+  terminal.sendText(removeCommand);
 
   vscode.window.showInformationMessage(`${library.name} 삭제를 시작했습니다.`);
+}
+
+/**
+ * 트리에서 감지해 둔 패키지 매니저를 쓰고, 없으면 그 자리에서 감지한다.
+ */
+async function resolvePackageManager(
+  library: LibraryInfo
+): Promise<PackageManager> {
+  if (library.packageManager) {
+    return library.packageManager.name;
+  }
+  if (!library.workspaceFolder) {
+    return "npm";
+  }
+  let pkg: Record<string, unknown> = {};
+  try {
+    pkg = JSON.parse(await fs.readFile(library.packageJsonPath, "utf8"));
+  } catch {
+    // package.json을 읽지 못해도 lockfile로 감지할 수 있다
+  }
+  return (await detectPackageManager(library.workspaceFolder.uri.fsPath, pkg))
+    .name;
 }
