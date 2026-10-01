@@ -126,7 +126,7 @@ export class LibraryTreeDataProvider
           lib.installedVersion = installedVersion;
           lib.latestVersion = metadata?.latestVersion;
 
-          const view = buildLibraryView(lib);
+          const view = buildLibraryView(lib, metadata?.versions);
           const item = new LibraryTreeItem(
             lib.name,
             vscode.TreeItemCollapsibleState.None,

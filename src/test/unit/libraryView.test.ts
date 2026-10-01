@@ -21,7 +21,7 @@ suite("buildLibraryView", () => {
     assert.strictEqual(view.icon, "package");
   });
 
-  test("설치된 버전이 최신보다 낮으면 outdated", () => {
+  test("범위를 벗어난 최신 버전은 major로 표시한다", () => {
     const view = buildLibraryView({
       ...base,
       version: "^18.0.0",
@@ -29,9 +29,9 @@ suite("buildLibraryView", () => {
       latestVersion: "19.1.0",
     });
 
-    assert.strictEqual(view.description, "18.2.0 → 19.1.0");
+    assert.strictEqual(view.description, "18.2.0 → 19.1.0 (major)");
     assert.strictEqual(view.contextValue, "libraryItemOutdated");
-    assert.strictEqual(view.icon, "arrow-circle-up");
+    assert.strictEqual(view.icon, "warning");
   });
 
   test("설치되지 않았으면 범위의 최소 버전으로 판단한다", () => {
@@ -105,7 +105,8 @@ suite("buildLibraryView", () => {
 
     assert.strictEqual(
       view.tooltip,
-      "react (dependencies) • Installed: 18.2.0 • Declared: ^18.0.0 • Latest: 19.1.0"
+      "react (dependencies) • Installed: 18.2.0 • Declared: ^18.0.0 • Latest: 19.1.0" +
+        " • Major update: outside ^18.0.0, may include breaking changes"
     );
   });
 
@@ -124,5 +125,32 @@ suite("buildLibraryView", () => {
     assert.strictEqual(view.icon, "question");
     assert.strictEqual(view.contextValue, "libraryItem");
     assert.ok(view.tooltip.includes("Usage not detected"));
+  });
+
+  test("범위 안의 업데이트는 일반 outdated로 표시한다", () => {
+    const view = buildLibraryView({
+      ...base,
+      version: "^18.0.0",
+      installedVersion: "18.2.0",
+      latestVersion: "18.3.1",
+    });
+
+    assert.strictEqual(view.description, "18.2.0 → 18.3.1");
+    assert.strictEqual(view.icon, "arrow-circle-up");
+    assert.ok(!view.tooltip.includes("Major"));
+  });
+
+  test("major 업데이트면 툴팁에 범위 내 최신 버전을 알려준다", () => {
+    const view = buildLibraryView(
+      {
+        ...base,
+        version: "^18.0.0",
+        installedVersion: "18.2.0",
+        latestVersion: "19.1.0",
+      },
+      ["18.2.0", "18.3.1", "19.1.0"]
+    );
+
+    assert.ok(view.tooltip.endsWith("Latest within range: 18.3.1"));
   });
 });
