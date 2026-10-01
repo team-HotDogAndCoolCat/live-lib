@@ -7,6 +7,7 @@ import {
   buildRemoveCommand,
   detectPackageManager,
   parsePackageManagerField,
+  parsePackageManagerSetting,
   pickByLockfile,
 } from "../../packageManager";
 
@@ -22,6 +23,20 @@ suite("parsePackageManagerField", () => {
     assert.strictEqual(parsePackageManagerField("deno@1.0.0"), undefined);
     assert.strictEqual(parsePackageManagerField(undefined), undefined);
     assert.strictEqual(parsePackageManagerField(42), undefined);
+  });
+});
+
+suite("parsePackageManagerSetting", () => {
+  test("지정한 매니저를 돌려준다", () => {
+    for (const pm of ["npm", "pnpm", "yarn", "bun"]) {
+      assert.strictEqual(parsePackageManagerSetting(pm), pm);
+    }
+  });
+
+  test("auto나 알 수 없는 값이면 undefined", () => {
+    assert.strictEqual(parsePackageManagerSetting("auto"), undefined);
+    assert.strictEqual(parsePackageManagerSetting("deno"), undefined);
+    assert.strictEqual(parsePackageManagerSetting(undefined), undefined);
   });
 });
 
@@ -56,6 +71,22 @@ suite("detectPackageManager", () => {
 
   teardown(async () => {
     await fs.rm(root, { recursive: true, force: true });
+  });
+
+  test("설정으로 지정한 매니저를 가장 우선한다", async () => {
+    await fs.writeFile(path.join(root, "yarn.lock"), "");
+    assert.deepStrictEqual(
+      await detectPackageManager(root, { packageManager: "npm@10.0.0" }, "pnpm"),
+      { name: "pnpm", source: "liveLib.packageManager setting" }
+    );
+  });
+
+  test("설정이 auto면 자동 감지한다", async () => {
+    await fs.writeFile(path.join(root, "yarn.lock"), "");
+    assert.deepStrictEqual(await detectPackageManager(root, {}, "auto"), {
+      name: "yarn",
+      source: "yarn.lock",
+    });
   });
 
   test("packageManager 필드를 lockfile보다 우선한다", async () => {

@@ -96,7 +96,11 @@ export class LibraryTreeDataProvider
 
         const pkg = await readPackageJson(folder);
         if (pkg) {
-          const pm = await detectPackageManager(folder.uri.fsPath, pkg);
+          const pm = await detectPackageManager(
+            folder.uri.fsPath,
+            pkg,
+            packageManagerSetting(folder)
+          );
           item.description = pm.name;
           item.tooltip = `${folder.uri.fsPath}\nPackage manager: ${pm.name} (${pm.source})`;
         }
@@ -118,7 +122,11 @@ export class LibraryTreeDataProvider
       const fileContents = await fs.readFile(packageJsonPath, "utf8");
       const pkg = JSON.parse(fileContents);
       const libraries = extractLibraries(pkg, folder, packageJsonPath);
-      const packageManager = await detectPackageManager(folder.uri.fsPath, pkg);
+      const packageManager = await detectPackageManager(
+        folder.uri.fsPath,
+        pkg,
+        packageManagerSetting(folder)
+      );
 
       if (!libraries.length) {
         return [this.createInfoItem("등록된 라이브러리가 없습니다.")];
@@ -216,4 +224,10 @@ async function readPackageJson(
   } catch {
     return undefined;
   }
+}
+
+export function packageManagerSetting(folder: vscode.WorkspaceFolder) {
+  return vscode.workspace
+    .getConfiguration("liveLib", folder.uri)
+    .get<string>("packageManager");
 }
