@@ -1,15 +1,22 @@
-import * as assert from 'assert';
+import * as assert from "assert";
+import * as vscode from "vscode";
 
-// You can import and use all API from the 'vscode' module
-// as well as import your extension to test it
-import * as vscode from 'vscode';
-// import * as myExtension from '../../extension';
+suite("Extension", () => {
+  test("활성화되고 모든 명령을 등록한다", async () => {
+    const extension = vscode.extensions.getExtension("gugitgugit.live-lib");
+    assert.ok(extension, "익스텐션을 찾을 수 없습니다");
 
-suite('Extension Test Suite', () => {
-	vscode.window.showInformationMessage('Start all tests.');
+    await extension.activate();
+    assert.ok(extension.isActive);
 
-	test('Sample test', () => {
-		assert.strictEqual(-1, [1, 2, 3].indexOf(5));
-		assert.strictEqual(-1, [1, 2, 3].indexOf(0));
-	});
+    const commands = await vscode.commands.getCommands(true);
+    for (const id of [
+      "lib-extension.refreshLibraries",
+      "lib-extension.showLibraryInfo",
+      "lib-extension.updateLibrary",
+      "lib-extension.deleteLibrary",
+    ]) {
+      assert.ok(commands.includes(id), `${id} 명령이 등록되지 않았습니다`);
+    }
+  });
 });
