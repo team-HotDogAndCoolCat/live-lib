@@ -34,7 +34,9 @@ VS Code 확장으로 프로젝트의 npm 라이브러리를 관리할 수 있는
 
 ## 확장 설정
 
-이 확장은 현재 추가 설정을 제공하지 않습니다.
+| 설정 | 기본값 | 설명 |
+| --- | --- | --- |
+| `liveLib.packageManager` | `auto` | 업데이트·삭제에 쓸 패키지 매니저입니다. `auto`, `npm`, `pnpm`, `yarn`, `bun` 중에서 고릅니다. `auto`는 `package.json`의 `packageManager` 필드와 lockfile로 감지합니다. 감지 결과가 맞지 않으면 프로젝트의 `.vscode/settings.json`에서 직접 지정하세요. |
 
 ## 알려진 문제
 
