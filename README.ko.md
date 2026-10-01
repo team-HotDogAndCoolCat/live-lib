@@ -38,9 +38,14 @@ VS Code 확장으로 프로젝트의 npm 라이브러리를 관리할 수 있는
 
 ## 알려진 문제
 
-- 라이브러리 사용 여부 감지는 정적 분석을 기반으로 하므로, 동적 import나 간접 참조는 감지하지 못할 수 있습니다.
+- 사용 여부는 `import` / `require` 구문, `package.json`의 scripts, 설정 파일을 보고 판단합니다. 변수로 만든 경로(예: `require(name)`)는 감지하지 못합니다.
+- 사용 근거를 찾지 못한 devDependency는 미사용 대신 **not detected**로 표시합니다. 도구는 간접적으로 쓰이는 경우가 많기 때문입니다(예: `webpack`이 내부에서 쓰는 `webpack-cli`). 삭제하기 전에 한 번 확인해 주세요.
 - 대규모 프로젝트의 경우 라이브러리 사용 여부 검사에 시간이 걸릴 수 있습니다.
-- 코드에서 import하지 않는 도구(`typescript`, `eslint`, `@types/*` 등)는 미사용으로 표시됩니다.
+
+## 피드백
+
+- 버그를 발견했거나 아이디어가 있다면 [GitHub 이슈](https://github.com/team-HotDogAndCoolCat/live-lib/issues/new)로 알려주세요.
+- Live Lib이 도움이 됐다면 [마켓플레이스 평점](https://marketplace.visualstudio.com/items?itemName=gugitgugit.live-lib&ssr=false#review-details)을 남겨주세요. 다른 개발자들이 찾는 데 큰 도움이 됩니다.
 
 ## 릴리즈 노트
 
