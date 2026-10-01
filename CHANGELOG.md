@@ -4,6 +4,18 @@ All notable changes to the "Live Lib" extension will be documented in this file.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- The outdated check now uses the version actually installed in `node_modules` instead of the lowest version allowed by the `package.json` range. Previously `^1.2.0` was compared as 1.2.0 even when 1.9.0 was installed. When a package is not installed, the range is still used.
+- Version comparison now follows semver rules (via the `semver` package), so prerelease versions such as `2.0.0-beta.1` are ordered correctly.
+- Non-version specifiers such as `workspace:*`, `file:`, git URLs and dist-tags are no longer compared.
+
+### Changed
+
+- The tooltip and details view show both the installed version and the declared range.
+
 ## [1.0.1] - 2026-09-30
 
 ### Security
