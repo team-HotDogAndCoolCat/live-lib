@@ -1,0 +1,76 @@
+# 버전 태그를 push하면 테스트 후 .vsix를 빌드하고 GitHub Release를 만든다.
+# 사용법: 버전을 올린 PR이 main에 머지된 뒤
+#   git switch main && git pull
+#   git tag v1.2.0 && git push origin v1.2.0
+# 마켓 배포(vsce publish)는 이 워크플로에 포함하지 않는다.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check tag matches package.json version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$VERSION" != "$PACKAGE_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PACKAGE_VERSION"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Extract release notes from CHANGELOG
+        run: |
+          awk -v version="$VERSION" '
+            index($0, "## [" version "]") == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md | sed -e '/./,$!d' > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::CHANGELOG.md has no section for [$VERSION]"
+            exit 1
+          fi
+          {
+            echo
+            echo "---"
+            echo
+            echo "Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=gugitgugit.live-lib). To install manually, download \`live-lib-$VERSION.vsix\` below and run **Extensions: Install from VSIX...** in VS Code."
+          } >> release-notes.md
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Integration tests
+        run: xvfb-run -a npm test
+
+      - name: Package
+        run: npx @vscode/vsce package --out "live-lib-$VERSION.vsix"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+            --verify-tag \
+            "live-lib-$VERSION.vsix"
