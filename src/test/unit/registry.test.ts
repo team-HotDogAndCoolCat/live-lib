@@ -17,6 +17,7 @@ suite("parsePackument", () => {
       description: "new",
       homepage: "https://new.example",
       latestVersion: "2.0.0",
+      versions: ["1.0.0", "2.0.0"],
     });
   });
 
@@ -45,6 +46,14 @@ suite("parsePackument", () => {
       description: "top-level",
       homepage: "https://top.example",
       latestVersion: undefined,
+      versions: [],
     });
+  });
+
+  test("semver 형식이 아닌 버전 키는 목록에서 뺀다", () => {
+    const result = parsePackument({
+      versions: { "1.0.0": {}, "not-a-version": {}, "2.0.0-beta.1": {} },
+    });
+    assert.deepStrictEqual(result.versions, ["1.0.0", "2.0.0-beta.1"]);
   });
 });

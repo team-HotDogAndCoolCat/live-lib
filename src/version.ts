@@ -33,6 +33,52 @@ export function isOutdated(
   return semver.gt(latestVersion, currentVersion);
 }
 
+export interface UpdatePlan {
+  /** 레지스트리의 latest 버전 */
+  latest: string;
+  /** latest가 package.json 범위를 벗어나 호환되지 않는 변경이 있을 수 있는지 */
+  isMajor: boolean;
+  /** package.json 범위 안에서 가장 높은 버전. 현재보다 높고 latest와 다를 때만 있다 */
+  wanted?: string;
+}
+
+/**
+ * 업데이트 방법을 정한다.
+ * major 판단은 package.json 범위를 기준으로 한다. ^0.2.0 → 0.3.0처럼 0.x의 minor 변경도
+ * 범위를 벗어나면 major로 본다. 범위를 해석할 수 없으면 semver의 major 자리로 판단한다.
+ */
+export function planUpdate(input: {
+  declaredRange: string;
+  currentVersion: string | undefined;
+  latestVersion: string | undefined;
+  versions?: string[];
+}): UpdatePlan | undefined {
+  const { declaredRange, currentVersion, latestVersion } = input;
+  if (!currentVersion || !isOutdated(currentVersion, latestVersion)) {
+    return undefined;
+  }
+  const latest = latestVersion as string;
+
+  const range = semver.validRange(declaredRange);
+  const comparable = range && range !== "*" ? range : undefined;
+
+  const isMajor = comparable
+    ? !semver.satisfies(latest, comparable)
+    : semver.major(latest) > semver.major(currentVersion) ||
+      (semver.major(currentVersion) === 0 &&
+        semver.minor(latest) > semver.minor(currentVersion));
+
+  let wanted: string | undefined;
+  if (isMajor && comparable && input.versions?.length) {
+    const candidate = semver.maxSatisfying(input.versions, comparable);
+    if (candidate && semver.gt(candidate, currentVersion)) {
+      wanted = candidate;
+    }
+  }
+
+  return { latest, isMajor, wanted };
+}
+
 export function normalizeVersion(version: string | undefined) {
   if (!version) {
     return undefined;

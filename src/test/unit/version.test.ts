@@ -4,6 +4,7 @@ import {
   isSafePackageName,
   isSafeVersion,
   normalizeVersion,
+  planUpdate,
   resolveCurrentVersion,
 } from "../../version";
 
@@ -73,6 +74,86 @@ suite("isOutdated", () => {
     assert.ok(!isOutdated(undefined, "2.0.0"));
     assert.ok(!isOutdated("1.0.0", undefined));
     assert.ok(!isOutdated("1.0.0", "garbage"));
+  });
+});
+
+suite("planUpdate", () => {
+  const versions = ["17.0.0", "18.0.0", "18.2.0", "18.3.1", "19.0.0-rc.1", "19.1.0"];
+
+  test("범위 안의 업데이트는 major가 아니다", () => {
+    assert.deepStrictEqual(
+      planUpdate({
+        declaredRange: "^18.0.0",
+        currentVersion: "18.2.0",
+        latestVersion: "18.3.1",
+        versions,
+      }),
+      { latest: "18.3.1", isMajor: false, wanted: undefined }
+    );
+  });
+
+  test("범위를 벗어나면 major이고, 범위 내 최신 버전을 함께 알려준다", () => {
+    assert.deepStrictEqual(
+      planUpdate({
+        declaredRange: "^18.0.0",
+        currentVersion: "18.2.0",
+        latestVersion: "19.1.0",
+        versions,
+      }),
+      { latest: "19.1.0", isMajor: true, wanted: "18.3.1" }
+    );
+  });
+
+  test("이미 범위 내 최신이면 wanted는 없다", () => {
+    const plan = planUpdate({
+      declaredRange: "^18.0.0",
+      currentVersion: "18.3.1",
+      latestVersion: "19.1.0",
+      versions,
+    });
+    assert.strictEqual(plan?.isMajor, true);
+    assert.strictEqual(plan?.wanted, undefined);
+  });
+
+  test("0.x 버전은 minor 변경도 범위를 벗어나면 major로 본다", () => {
+    const plan = planUpdate({
+      declaredRange: "^0.2.0",
+      currentVersion: "0.2.5",
+      latestVersion: "0.3.0",
+      versions: ["0.2.5", "0.2.9", "0.3.0"],
+    });
+    assert.deepStrictEqual(plan, { latest: "0.3.0", isMajor: true, wanted: "0.2.9" });
+  });
+
+  test("~ 범위는 minor 변경도 범위 밖이다", () => {
+    const plan = planUpdate({
+      declaredRange: "~1.2.0",
+      currentVersion: "1.2.3",
+      latestVersion: "1.3.0",
+    });
+    assert.strictEqual(plan?.isMajor, true);
+  });
+
+  test("범위를 해석할 수 없으면 semver major 자리로 판단한다", () => {
+    assert.strictEqual(
+      planUpdate({ declaredRange: "*", currentVersion: "1.9.0", latestVersion: "2.0.0" })?.isMajor,
+      true
+    );
+    assert.strictEqual(
+      planUpdate({ declaredRange: "latest", currentVersion: "1.9.0", latestVersion: "1.10.0" })?.isMajor,
+      false
+    );
+  });
+
+  test("업데이트할 게 없으면 undefined", () => {
+    assert.strictEqual(
+      planUpdate({ declaredRange: "^18.0.0", currentVersion: "18.3.1", latestVersion: "18.3.1" }),
+      undefined
+    );
+    assert.strictEqual(
+      planUpdate({ declaredRange: "workspace:*", currentVersion: undefined, latestVersion: "1.0.0" }),
+      undefined
+    );
   });
 });
 

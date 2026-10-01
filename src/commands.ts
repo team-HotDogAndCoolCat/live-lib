@@ -2,7 +2,14 @@ import * as vscode from "vscode";
 import type { LibraryInfo } from "./types";
 import type { LibraryMetadataService } from "./registry";
 import { LibraryTreeDataProvider, LibraryTreeItem } from "./libraryTree";
-import { isSafePackageName, isSafeVersion, normalizeVersion } from "./version";
+import {
+  isSafePackageName,
+  isSafeVersion,
+  normalizeVersion,
+  planUpdate,
+  resolveCurrentVersion,
+  type UpdatePlan,
+} from "./version";
 
 type LibraryCommandArg = LibraryTreeItem | LibraryInfo | undefined;
 
@@ -112,10 +119,7 @@ async function updateLibrary(
     return;
   }
 
-  const metadata =
-    library.latestVersion && normalizeVersion(library.latestVersion)
-      ? { latestVersion: library.latestVersion }
-      : await metadataService.getMetadata(library);
+  const metadata = await metadataService.getMetadata(library);
 
   const latestVersion = normalizeVersion(
     metadata?.latestVersion ?? library.latestVersion
@@ -128,9 +132,35 @@ async function updateLibrary(
     return;
   }
 
-  if (!isSafePackageName(library.name) || !isSafeVersion(latestVersion)) {
+  const currentVersion = resolveCurrentVersion(
+    library.version,
+    library.installedVersion
+  );
+  const plan = planUpdate({
+    declaredRange: library.version,
+    currentVersion,
+    latestVersion,
+    versions: metadata?.versions,
+  });
+
+  let targetVersion = latestVersion;
+  if (plan?.isMajor) {
+    const chosen = await confirmMajorUpdate(
+      library.name,
+      library.version,
+      currentVersion,
+      plan,
+      metadata?.homepage
+    );
+    if (!chosen) {
+      return;
+    }
+    targetVersion = chosen;
+  }
+
+  if (!isSafePackageName(library.name) || !isSafeVersion(targetVersion)) {
     vscode.window.showErrorMessage(
-      `허용되지 않는 패키지 이름 또는 버전이라 업데이트를 실행하지 않았습니다: ${library.name}@${latestVersion}`
+      `허용되지 않는 패키지 이름 또는 버전이라 업데이트를 실행하지 않았습니다: ${library.name}@${targetVersion}`
     );
     return;
   }
@@ -141,13 +171,59 @@ async function updateLibrary(
   });
 
   terminal.show();
-  terminal.sendText(`npm install ${library.name}@${latestVersion}`);
+  terminal.sendText(`npm install ${library.name}@${targetVersion}`);
 
   vscode.window.showInformationMessage(
-    `${library.name} 업데이트를 시작했습니다 (${latestVersion}).`
+    `${library.name} 업데이트를 시작했습니다 (${targetVersion}).`
   );
 
   treeDataProvider.refresh();
+}
+
+/**
+ * major 업데이트 전에 확인을 받는다. 업데이트할 버전을 돌려주고, 취소하면 undefined.
+ */
+async function confirmMajorUpdate(
+  name: string,
+  declaredRange: string,
+  currentVersion: string | undefined,
+  plan: UpdatePlan,
+  homepage: string | undefined
+): Promise<string | undefined> {
+  const updateLatest = `${plan.latest}로 업데이트 (major)`;
+  const updateWanted = plan.wanted
+    ? `${plan.wanted}로 업데이트 (범위 내 최신)`
+    : undefined;
+  const openHomepage = homepage ? "변경 내역 확인" : undefined;
+
+  const actions = [updateWanted, updateLatest, openHomepage].filter(
+    (action): action is string => !!action
+  );
+
+  const choice = await vscode.window.showWarningMessage(
+    `${name} ${currentVersion ?? declaredRange} → ${plan.latest}은(는) major 업데이트입니다.`,
+    {
+      modal: true,
+      detail:
+        `package.json에 적힌 범위(${declaredRange})를 벗어나는 버전이라 호환되지 않는 변경이 있을 수 있습니다. ` +
+        "변경 내역을 확인한 뒤 업데이트하세요." +
+        (plan.wanted
+          ? `\n\n범위 안에서 가장 높은 버전은 ${plan.wanted}입니다.`
+          : ""),
+    },
+    ...actions
+  );
+
+  if (choice === updateLatest) {
+    return plan.latest;
+  }
+  if (choice === updateWanted) {
+    return plan.wanted;
+  }
+  if (choice === openHomepage && homepage) {
+    vscode.env.openExternal(vscode.Uri.parse(homepage));
+  }
+  return undefined;
 }
 
 async function deleteLibrary(arg: LibraryCommandArg) {

@@ -102,6 +102,7 @@ export function parsePackument(parsed: RegistryPackument): LibraryMetadata {
       parsed.homepage ??
       undefined,
     latestVersion: latestTag ?? undefined,
+    versions: Object.keys(parsed.versions ?? {}).filter((v) => semver.valid(v)),
   };
 }
 

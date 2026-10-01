@@ -1,5 +1,5 @@
 import type { LibraryInfo } from "./types";
-import { isOutdated, resolveCurrentVersion } from "./version";
+import { planUpdate, resolveCurrentVersion } from "./version";
 
 export type LibraryContextValue =
   | "libraryItem"
@@ -22,14 +22,23 @@ export function buildLibraryView(
   lib: Pick<
     LibraryInfo,
     "name" | "version" | "scope" | "installedVersion" | "latestVersion" | "usage"
-  >
+  >,
+  versions?: string[]
 ): LibraryView {
   const currentVersion = resolveCurrentVersion(lib.version, lib.installedVersion);
-  const outdated = isOutdated(currentVersion, lib.latestVersion);
+  const plan = planUpdate({
+    declaredRange: lib.version,
+    currentVersion,
+    latestVersion: lib.latestVersion,
+    versions,
+  });
+  const outdated = !!plan;
   const shownVersion = currentVersion ?? lib.version;
 
   let description: string;
-  if (outdated) {
+  if (plan?.isMajor) {
+    description = `${shownVersion} → ${plan.latest} (major)`;
+  } else if (outdated) {
     description = `${shownVersion} → ${lib.latestVersion}`;
   } else if (lib.usage === "unused") {
     description = `${shownVersion} (unused)`;
@@ -47,6 +56,14 @@ export function buildLibraryView(
   if (lib.latestVersion) {
     tooltipParts.push(`Latest: ${lib.latestVersion}`);
   }
+  if (plan?.isMajor) {
+    tooltipParts.push(
+      `Major update: outside ${lib.version}, may include breaking changes`
+    );
+    if (plan.wanted) {
+      tooltipParts.push(`Latest within range: ${plan.wanted}`);
+    }
+  }
   if (lib.usage === "unused") {
     tooltipParts.push("Unused: not imported anywhere in the project");
   } else if (lib.usage === "unverified") {
@@ -58,7 +75,7 @@ export function buildLibraryView(
   let icon: string;
   let contextValue: LibraryContextValue;
   if (outdated) {
-    icon = "arrow-circle-up";
+    icon = plan?.isMajor ? "warning" : "arrow-circle-up";
     contextValue = "libraryItemOutdated";
   } else if (lib.usage === "unused") {
     icon = "circle-slash";
