@@ -19,4 +19,11 @@ suite("Extension", () => {
       assert.ok(commands.includes(id), `${id} 명령이 등록되지 않았습니다`);
     }
   });
+
+  test("liveLib.packageManager 설정을 기본값 auto로 등록한다", () => {
+    const inspected = vscode.workspace
+      .getConfiguration("liveLib")
+      .inspect<string>("packageManager");
+    assert.strictEqual(inspected?.defaultValue, "auto");
+  });
 });

@@ -11,7 +11,12 @@ export function activate(context: vscode.ExtensionContext) {
     treeDataProvider,
     metadataService,
     vscode.window.registerTreeDataProvider("libExplorer", treeDataProvider),
-    ...registerCommands(metadataService, treeDataProvider)
+    ...registerCommands(metadataService, treeDataProvider),
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration("liveLib.packageManager")) {
+        treeDataProvider.refresh();
+      }
+    })
   );
 }
 

@@ -37,6 +37,15 @@ export function parsePackageManagerField(
 }
 
 /**
+ * liveLib.packageManager 설정값을 해석한다. "auto"나 알 수 없는 값이면 undefined.
+ */
+export function parsePackageManagerSetting(
+  value: unknown
+): PackageManager | undefined {
+  return PACKAGE_MANAGERS.find((pm) => pm === value);
+}
+
+/**
  * 파일 이름 목록에서 lockfile로 매니저를 고른다.
  */
 export function pickByLockfile(
@@ -53,6 +62,7 @@ export function pickByLockfile(
 
 /**
  * 프로젝트의 패키지 매니저를 감지한다.
+ * 0. liveLib.packageManager 설정 (auto가 아닐 때)
  * 1. package.json의 packageManager 필드
  * 2. 프로젝트 루트의 lockfile
  * 3. 상위 폴더의 lockfile (모노레포에서 하위 패키지를 연 경우)
@@ -60,8 +70,14 @@ export function pickByLockfile(
  */
 export async function detectPackageManager(
   projectRoot: string,
-  pkg: Record<string, unknown>
+  pkg: Record<string, unknown>,
+  setting?: unknown
 ): Promise<DetectedPackageManager> {
+  const fromSetting = parsePackageManagerSetting(setting);
+  if (fromSetting) {
+    return { name: fromSetting, source: "liveLib.packageManager setting" };
+  }
+
   const fromField = parsePackageManagerField(pkg.packageManager);
   if (fromField) {
     return { name: fromField, source: "packageManager field" };

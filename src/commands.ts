@@ -8,7 +8,11 @@ import {
   detectPackageManager,
   type PackageManager,
 } from "./packageManager";
-import { LibraryTreeDataProvider, LibraryTreeItem } from "./libraryTree";
+import {
+  LibraryTreeDataProvider,
+  LibraryTreeItem,
+  packageManagerSetting,
+} from "./libraryTree";
 import {
   isSafePackageName,
   isSafeVersion,
@@ -302,6 +306,11 @@ async function resolvePackageManager(
   } catch {
     // package.json을 읽지 못해도 lockfile로 감지할 수 있다
   }
-  return (await detectPackageManager(library.workspaceFolder.uri.fsPath, pkg))
-    .name;
+  return (
+    await detectPackageManager(
+      library.workspaceFolder.uri.fsPath,
+      pkg,
+      packageManagerSetting(library.workspaceFolder)
+    )
+  ).name;
 }

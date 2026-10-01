@@ -38,6 +38,31 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Live Lib",
+      "properties": {
+        "liveLib.packageManager": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "npm",
+            "pnpm",
+            "yarn",
+            "bun"
+          ],
+          "enumDescriptions": [
+            "Detect from the packageManager field in package.json, then from the lockfile.",
+            "Always use npm.",
+            "Always use pnpm.",
+            "Always use yarn.",
+            "Always use bun."
+          ],
+          "default": "auto",
+          "scope": "resource",
+          "markdownDescription": "Package manager used by **Update** and **Delete**. Choose a specific one if automatic detection picks the wrong package manager for this project."
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {

@@ -9,6 +9,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 ### Added
 
 - pnpm, yarn and bun support. The package manager is detected from the `packageManager` field in `package.json`, then from the lockfile in the project or a parent folder (for monorepo packages). Update and Delete run the matching command, so a pnpm or yarn project no longer gets an unwanted `package-lock.json`. The detected package manager is shown next to each workspace folder.
+- `liveLib.packageManager` setting (`auto`, `npm`, `pnpm`, `yarn`, `bun`) to choose the package manager yourself when detection picks the wrong one. It can be set per workspace folder, and the tree refreshes when it changes.
 
 ### Changed
 

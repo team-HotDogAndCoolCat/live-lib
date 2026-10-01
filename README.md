@@ -34,7 +34,9 @@ A VS Code extension for managing npm libraries in your project.
 
 ## Extension Settings
 
-This extension currently does not provide additional settings.
+| Setting | Default | Description |
+| --- | --- | --- |
+| `liveLib.packageManager` | `auto` | Package manager used by Update and Delete: `auto`, `npm`, `pnpm`, `yarn` or `bun`. `auto` detects it from the `packageManager` field in `package.json`, then from the lockfile. Set it per project in `.vscode/settings.json` if detection picks the wrong one. |
 
 ## Known Issues
 
