@@ -1,4 +1,5 @@
 import type * as vscode from "vscode";
+import type { LibraryUsage } from "./usage";
 
 export type LibraryScope = "dependencies" | "devDependencies";
 
@@ -12,7 +13,8 @@ export interface LibraryInfo {
   packageJsonPath: string;
   workspaceFolder?: vscode.WorkspaceFolder;
   latestVersion?: string;
-  isUsed?: boolean;
+  /** 코드·설정·scripts에서 사용 근거를 찾았는지 */
+  usage?: LibraryUsage;
 }
 
 export interface LibraryMetadata {

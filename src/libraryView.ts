@@ -21,7 +21,7 @@ export interface LibraryView {
 export function buildLibraryView(
   lib: Pick<
     LibraryInfo,
-    "name" | "version" | "scope" | "installedVersion" | "latestVersion" | "isUsed"
+    "name" | "version" | "scope" | "installedVersion" | "latestVersion" | "usage"
   >
 ): LibraryView {
   const currentVersion = resolveCurrentVersion(lib.version, lib.installedVersion);
@@ -31,8 +31,10 @@ export function buildLibraryView(
   let description: string;
   if (outdated) {
     description = `${shownVersion} → ${lib.latestVersion}`;
-  } else if (!lib.isUsed) {
+  } else if (lib.usage === "unused") {
     description = `${shownVersion} (unused)`;
+  } else if (lib.usage === "unverified") {
+    description = `${shownVersion} (not detected)`;
   } else {
     description = shownVersion;
   }
@@ -45,8 +47,12 @@ export function buildLibraryView(
   if (lib.latestVersion) {
     tooltipParts.push(`Latest: ${lib.latestVersion}`);
   }
-  if (lib.isUsed === false) {
-    tooltipParts.push("Unused");
+  if (lib.usage === "unused") {
+    tooltipParts.push("Unused: not imported anywhere in the project");
+  } else if (lib.usage === "unverified") {
+    tooltipParts.push(
+      "Usage not detected: it may still be used by CI, your editor or other tools"
+    );
   }
 
   let icon: string;
@@ -54,9 +60,12 @@ export function buildLibraryView(
   if (outdated) {
     icon = "arrow-circle-up";
     contextValue = "libraryItemOutdated";
-  } else if (!lib.isUsed) {
+  } else if (lib.usage === "unused") {
     icon = "circle-slash";
     contextValue = "libraryItemUnused";
+  } else if (lib.usage === "unverified") {
+    icon = "question";
+    contextValue = "libraryItem";
   } else {
     icon = lib.scope === "devDependencies" ? "beaker" : "package";
     contextValue = "libraryItem";

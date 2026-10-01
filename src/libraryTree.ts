@@ -4,7 +4,8 @@ import { promises as fs } from "fs";
 import type { LibraryInfo } from "./types";
 import type { LibraryMetadataService } from "./registry";
 import { extractLibraries } from "./packageJson";
-import { findImportedLibraries } from "./usage";
+import { classifyUsage, type UsageEvidence } from "./usage";
+import { collectUsageEvidence } from "./usageEvidence";
 import { readInstalledVersion } from "./installed";
 import { buildLibraryView } from "./libraryView";
 
@@ -112,11 +113,11 @@ export class LibraryTreeDataProvider
         return [this.createInfoItem("등록된 라이브러리가 없습니다.")];
       }
 
-      const usedLibraries = await this.checkLibraryUsage(libraries, folder);
+      const evidence = await this.collectEvidence(pkg, libraries, folder);
 
       const items = await Promise.all(
         libraries.map(async (lib) => {
-          lib.isUsed = usedLibraries.has(lib.name);
+          lib.usage = classifyUsage(lib, evidence);
           const [metadata, installedVersion] = await Promise.all([
             this.metadataService.getMetadata(lib).catch(() => null),
             readInstalledVersion(folder.uri.fsPath, lib.name),
@@ -156,38 +157,27 @@ export class LibraryTreeDataProvider
     }
   }
 
-  private async checkLibraryUsage(
+  private async collectEvidence(
+    pkg: Record<string, unknown>,
     libraries: LibraryInfo[],
     folder: vscode.WorkspaceFolder
-  ): Promise<Set<string>> {
-    const usedLibraries = new Set<string>();
-    const libraryNames = new Set(libraries.map((lib) => lib.name));
-
-    try {
-      const sourceFiles = await vscode.workspace.findFiles(
+  ): Promise<UsageEvidence> {
+    const sourceFiles = await vscode.workspace
+      .findFiles(
         new vscode.RelativePattern(folder, "**/*.{js,jsx,ts,tsx,mjs,cjs}"),
         "**/node_modules/**"
+      )
+      .then(
+        (uris) => uris.map((uri) => uri.fsPath),
+        () => [] as string[]
       );
 
-      for (const file of sourceFiles) {
-        try {
-          const content = await fs.readFile(file.fsPath, "utf8");
-          const remaining = [...libraryNames].filter(
-            (name) => !usedLibraries.has(name)
-          );
-
-          for (const name of findImportedLibraries(content, remaining)) {
-            usedLibraries.add(name);
-          }
-        } catch {
-          continue;
-        }
-      }
-    } catch {
-      return usedLibraries;
-    }
-
-    return usedLibraries;
+    return collectUsageEvidence(
+      folder.uri.fsPath,
+      pkg,
+      libraries.map((lib) => lib.name),
+      sourceFiles
+    );
   }
 
   private createInfoItem(label: string) {

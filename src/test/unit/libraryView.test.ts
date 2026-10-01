@@ -5,7 +5,7 @@ suite("buildLibraryView", () => {
   const base = {
     name: "react",
     scope: "dependencies" as const,
-    isUsed: true,
+    usage: "used" as const,
   };
 
   test("범위는 낮아도 최신 버전이 설치돼 있으면 outdated가 아니다 (#28)", () => {
@@ -63,7 +63,7 @@ suite("buildLibraryView", () => {
       version: "^1.0.0",
       installedVersion: "1.0.0",
       latestVersion: "1.0.0",
-      isUsed: false,
+      usage: "unused",
     });
 
     assert.strictEqual(view.description, "1.0.0 (unused)");
@@ -77,7 +77,7 @@ suite("buildLibraryView", () => {
       version: "^1.0.0",
       installedVersion: "1.0.0",
       latestVersion: "2.0.0",
-      isUsed: false,
+      usage: "unused",
     });
 
     assert.strictEqual(view.contextValue, "libraryItemOutdated");
@@ -107,5 +107,22 @@ suite("buildLibraryView", () => {
       view.tooltip,
       "react (dependencies) • Installed: 18.2.0 • Declared: ^18.0.0 • Latest: 19.1.0"
     );
+  });
+
+  test("사용 근거가 없는 devDependency는 not detected로 표시하고 삭제 버튼은 유지한다", () => {
+    const view = buildLibraryView({
+      ...base,
+      name: "husky",
+      scope: "devDependencies",
+      version: "^9.0.0",
+      installedVersion: "9.1.0",
+      latestVersion: "9.1.0",
+      usage: "unverified",
+    });
+
+    assert.strictEqual(view.description, "9.1.0 (not detected)");
+    assert.strictEqual(view.icon, "question");
+    assert.strictEqual(view.contextValue, "libraryItem");
+    assert.ok(view.tooltip.includes("Usage not detected"));
   });
 });

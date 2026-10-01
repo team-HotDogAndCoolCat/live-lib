@@ -38,9 +38,14 @@ This extension currently does not provide additional settings.
 
 ## Known Issues
 
-- Library usage detection is based on static analysis, so dynamic imports or indirect references may not be detected.
+- Usage detection looks at `import` / `require` statements, `package.json` scripts and config files. Imports built from variables (for example `require(name)`) cannot be detected.
+- A devDependency with no usage found is shown as **not detected** instead of unused, because tools are often used indirectly (for example `webpack-cli` through `webpack`). Check these before removing them.
 - Library usage checking may take time for large projects.
-- Tools that are not imported from code (for example `typescript`, `eslint`, `@types/*`) are shown as unused.
+
+## Feedback
+
+- Found a bug or have an idea? [Open an issue on GitHub](https://github.com/team-HotDogAndCoolCat/live-lib/issues/new).
+- If Live Lib saves you time, a [rating on the Marketplace](https://marketplace.visualstudio.com/items?itemName=gugitgugit.live-lib&ssr=false#review-details) helps other developers find it.
 
 ## Release Notes
 
