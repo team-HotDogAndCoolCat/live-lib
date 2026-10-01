@@ -4,7 +4,7 @@ All notable changes to the "Live Lib" extension will be documented in this file.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.1.0] - 2026-10-01
 
 ### Added
 
@@ -22,7 +22,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 - The tooltip and details view show both the installed version and the declared range.
 - A devDependency with no usage found is shown as "not detected" instead of "unused", since tools are often used indirectly.
-- Added a Feedback section to the README.
+- The README is now split into English (`README.md`) and Korean (`README.ko.md`), with version, install and license badges and a Feedback section.
 
 ## [1.0.1] - 2026-09-30
 
