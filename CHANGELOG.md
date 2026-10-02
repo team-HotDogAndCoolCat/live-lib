@@ -4,6 +4,14 @@ All notable changes to the "Live Lib" extension will be documented in this file.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Much lighter registry requests. The tree now fetches only each package's latest manifest (`/<package>/latest`, a few KB) instead of its full metadata, which can be over 10 MB for packages like `typescript`. For this extension's own 14 dependencies, data downloaded per refresh dropped from 45.3 MB to about 60 KB.
+- The full version list, needed to find the latest version within your range, is fetched only when the major update dialog opens. The tooltip no longer shows that version.
+- Registry requests run at most 8 at a time and time out after 10 seconds, so one slow package no longer holds up the whole tree.
+
 ## [1.2.0] - 2026-10-01
 
 ### Added
