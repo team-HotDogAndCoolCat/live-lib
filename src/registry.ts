@@ -12,6 +12,28 @@ const ABBREVIATED_ACCEPT = "application/vnd.npm.install-v1+json";
 
 export type FetchJson = (url: string, accept: string) => Promise<unknown>;
 
+const CACHE_STORAGE_KEY = "liveLib.registryMetadata";
+const DEFAULT_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+
+/** vscode.Memento(globalState)와 같은 모양. 테스트에서는 가짜 저장소를 쓴다. */
+export interface MetadataStore {
+  get<T>(key: string): T | undefined;
+  update(key: string, value: unknown): PromiseLike<void>;
+}
+
+interface StoredMetadata {
+  metadata: LibraryMetadata;
+  fetchedAt: number;
+}
+
+export interface MetadataServiceOptions {
+  fetchJson?: FetchJson;
+  /** 지정하면 최신 버전 정보를 VS Code를 다시 켜도 남도록 저장한다 */
+  store?: MetadataStore;
+  ttlMs?: number;
+  now?: () => number;
+}
+
 export class LibraryMetadataService implements vscode.Disposable {
   private readonly metadataCache = new Map<
     string,
@@ -19,20 +41,50 @@ export class LibraryMetadataService implements vscode.Disposable {
   >();
   private readonly versionsCache = new Map<string, Promise<string[] | null>>();
   private readonly limit = createLimiter(MAX_CONCURRENT_REQUESTS);
+  private readonly fetchJson: FetchJson;
+  private readonly store?: MetadataStore;
+  private readonly ttlMs: number;
+  private readonly now: () => number;
+  private persisted: Record<string, StoredMetadata>;
 
-  constructor(private readonly fetchJson: FetchJson = fetchJsonOverHttps) {}
+  constructor(options: MetadataServiceOptions = {}) {
+    this.fetchJson = options.fetchJson ?? fetchJsonOverHttps;
+    this.store = options.store;
+    this.ttlMs = options.ttlMs ?? DEFAULT_CACHE_TTL_MS;
+    this.now = options.now ?? Date.now;
+    this.persisted = this.loadFreshEntries();
+  }
 
   /**
    * 트리와 상세 보기에 쓰는 최신 버전 정보. /<패키지>/latest만 받는다.
+   * 저장된 정보가 유효 시간 안이면 레지스트리를 조회하지 않는다.
    */
   getMetadata(library: Pick<LibraryInfo, "name">): Promise<LibraryMetadata | null> {
-    return this.cached(this.metadataCache, library.name, async () =>
-      parseLatestManifest(
+    const name = library.name;
+    const stored = this.persisted[name];
+    if (!this.metadataCache.has(name) && stored && this.isFresh(stored)) {
+      this.metadataCache.set(name, Promise.resolve(stored.metadata));
+    }
+
+    return this.cached(this.metadataCache, name, async () => {
+      const metadata = parseLatestManifest(
         await this.limit(() =>
-          this.fetchJson(`${REGISTRY_URL}/${encodeName(library.name)}/latest`, "application/json")
+          this.fetchJson(`${REGISTRY_URL}/${encodeName(name)}/latest`, "application/json")
         )
-      )
-    );
+      );
+      this.persist(name, metadata);
+      return metadata;
+    });
+  }
+
+  /**
+   * 저장된 정보를 모두 지운다. 새로고침 버튼에서 호출한다.
+   */
+  async clearCache() {
+    this.metadataCache.clear();
+    this.versionsCache.clear();
+    this.persisted = {};
+    await this.store?.update(CACHE_STORAGE_KEY, undefined);
   }
 
   /**
@@ -51,6 +103,28 @@ export class LibraryMetadataService implements vscode.Disposable {
   dispose() {
     this.metadataCache.clear();
     this.versionsCache.clear();
+  }
+
+  private isFresh(entry: StoredMetadata) {
+    return this.now() - entry.fetchedAt < this.ttlMs;
+  }
+
+  private loadFreshEntries(): Record<string, StoredMetadata> {
+    const saved =
+      this.store?.get<Record<string, StoredMetadata>>(CACHE_STORAGE_KEY) ?? {};
+    return Object.fromEntries(
+      Object.entries(saved).filter(([, entry]) => this.isFresh(entry))
+    );
+  }
+
+  private persist(name: string, metadata: LibraryMetadata) {
+    if (!this.store) {
+      return;
+    }
+    this.persisted[name] = { metadata, fetchedAt: this.now() };
+    Promise.resolve(this.store.update(CACHE_STORAGE_KEY, this.persisted)).catch(
+      (error) => console.warn("[lib-extension] 캐시 저장 실패", error)
+    );
   }
 
   // 같은 패키지를 동시에 여러 번 요청해도 한 번만 받도록 Promise를 캐시한다
