@@ -33,6 +33,12 @@ A VS Code extension for managing npm libraries in your project.
 - Node.js project (requires `package.json` file)
 - npm, pnpm, yarn or bun. The package manager is detected from the `packageManager` field in `package.json` or from the lockfile, and Update / Delete run the matching command (for example `pnpm add` / `pnpm remove`).
 
+## Private and Custom Registries
+
+Latest versions are looked up in the registry set in `.npmrc` (`registry=` and `@scope:registry=`), read from your home folder and from the project up to the repository root. The closest file wins.
+
+Live Lib never sends credentials such as `_authToken`. Packages from a registry that requires authentication show "Latest: not available" in the tooltip.
+
 ## Extension Settings
 
 | Setting | Default | Description |
