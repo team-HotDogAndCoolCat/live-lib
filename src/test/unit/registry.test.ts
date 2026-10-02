@@ -4,6 +4,7 @@ import {
   LibraryMetadataService,
   parseLatestManifest,
   parseVersionList,
+  RegistryHttpError,
   type FetchJson,
   type MetadataStore,
 } from "../../registry";
@@ -257,5 +258,81 @@ suite("LibraryMetadataService 캐시", () => {
     const fetchJson: FetchJson = async () => ({ versions: { "1.0.0": {} } });
     await new LibraryMetadataService({ fetchJson, store }).getVersions("react");
     assert.strictEqual(store.data.size, 0);
+  });
+});
+
+suite("LibraryMetadataService 레지스트리 선택", () => {
+  const silenceWarn = async (fn: () => Promise<void>) => {
+    const warn = console.warn;
+    console.warn = () => {};
+    try {
+      await fn();
+    } finally {
+      console.warn = warn;
+    }
+  };
+
+  test("지정한 레지스트리로 요청한다", async () => {
+    const urls: string[] = [];
+    const fetchJson: FetchJson = async (url) => {
+      urls.push(url);
+      return { version: "2.0.0" };
+    };
+    const service = new LibraryMetadataService({ fetchJson });
+
+    await service.getMetadata({ name: "@mycompany/ui", registry: "https://npm.mycompany.com" });
+    await service.getVersions("@mycompany/ui", "https://npm.mycompany.com");
+
+    assert.deepStrictEqual(urls, [
+      "https://npm.mycompany.com/@mycompany%2Fui/latest",
+      "https://npm.mycompany.com/@mycompany%2Fui",
+    ]);
+  });
+
+  test("사내 레지스트리가 /latest를 지원하지 않으면 버전 목록에서 latest 태그를 꺼낸다", async () => {
+    const fetchJson: FetchJson = async (url) => {
+      if (url.endsWith("/latest")) {
+        throw new RegistryHttpError(404);
+      }
+      return { "dist-tags": { latest: "3.1.0" }, versions: { "3.1.0": {} } };
+    };
+    const metadata = await new LibraryMetadataService({ fetchJson }).getMetadata({
+      name: "internal-lib",
+      registry: "https://npm.mycompany.com",
+    });
+    assert.deepStrictEqual(metadata, { latestVersion: "3.1.0" });
+  });
+
+  test("npm 공식 레지스트리나 인증 오류에서는 다시 시도하지 않는다", async () => {
+    await silenceWarn(async () => {
+      for (const [registry, status] of [
+        ["https://registry.npmjs.org", 404],
+        ["https://npm.mycompany.com", 401],
+        ["https://npm.mycompany.com", 403],
+      ] as const) {
+        let calls = 0;
+        const fetchJson: FetchJson = async () => {
+          calls += 1;
+          throw new RegistryHttpError(status);
+        };
+        const metadata = await new LibraryMetadataService({ fetchJson }).getMetadata({
+          name: "private-lib",
+          registry,
+        });
+        assert.strictEqual(metadata, null, `${registry} ${status}`);
+        assert.strictEqual(calls, 1, `${registry} ${status}`);
+      }
+    });
+  });
+
+  test("같은 이름이라도 레지스트리가 다르면 따로 캐시한다", async () => {
+    const fetchJson: FetchJson = async (url) => ({
+      version: url.startsWith("https://registry.npmjs.org") ? "1.0.0" : "9.0.0",
+    });
+    const service = new LibraryMetadataService({ fetchJson });
+    const a = await service.getMetadata({ name: "utils" });
+    const b = await service.getMetadata({ name: "utils", registry: "https://npm.mycompany.com" });
+    assert.strictEqual(a?.latestVersion, "1.0.0");
+    assert.strictEqual(b?.latestVersion, "9.0.0");
   });
 });

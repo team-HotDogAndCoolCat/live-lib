@@ -166,7 +166,7 @@ async function updateLibrary(
         location: vscode.ProgressLocation.Notification,
         title: `${library.name} 버전 목록을 불러오는 중...`,
       },
-      () => metadataService.getVersions(library.name)
+      () => metadataService.getVersions(library.name, library.registry)
     );
     plan =
       planUpdate({

@@ -33,6 +33,12 @@ VS Code 확장으로 프로젝트의 npm 라이브러리를 관리할 수 있는
 - Node.js 프로젝트 (`package.json` 파일 필요)
 - npm, pnpm, yarn, bun 중 하나. `package.json`의 `packageManager` 필드나 lockfile로 패키지 매니저를 감지하고, 업데이트·삭제 시 그에 맞는 명령(예: `pnpm add` / `pnpm remove`)을 실행합니다.
 
+## 사내·커스텀 레지스트리
+
+최신 버전은 `.npmrc`에 지정한 레지스트리(`registry=`, `@scope:registry=`)에서 조회합니다. 사용자 홈 폴더와, 프로젝트부터 저장소 루트까지의 `.npmrc`를 읽고, 프로젝트에 가까운 파일이 우선합니다.
+
+Live Lib은 `_authToken` 같은 인증 정보를 보내지 않습니다. 인증이 필요한 레지스트리의 패키지는 툴팁에 "Latest: not available"로 표시됩니다.
+
 ## 확장 설정
 
 | 설정 | 기본값 | 설명 |

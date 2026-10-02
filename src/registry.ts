@@ -1,10 +1,10 @@
 import type * as vscode from "vscode";
+import * as http from "http";
 import * as https from "https";
 import * as semver from "semver";
 import { createLimiter } from "./concurrency";
+import { DEFAULT_REGISTRY } from "./npmrc";
 import type { LibraryInfo, LibraryMetadata } from "./types";
-
-const REGISTRY_URL = "https://registry.npmjs.org";
 const MAX_CONCURRENT_REQUESTS = 8;
 const REQUEST_TIMEOUT_MS = 10_000;
 
@@ -60,22 +60,38 @@ export class LibraryMetadataService implements vscode.Disposable {
    * 트리와 상세 보기에 쓰는 최신 버전 정보. /<패키지>/latest만 받는다.
    * 저장된 정보가 유효 시간 안이면 레지스트리를 조회하지 않는다.
    */
-  getMetadata(library: Pick<LibraryInfo, "name">): Promise<LibraryMetadata | null> {
-    const name = library.name;
-    const stored = this.persisted[name];
-    if (!this.metadataCache.has(name) && stored && this.isFresh(stored)) {
-      this.metadataCache.set(name, Promise.resolve(stored.metadata));
+  getMetadata(
+    library: Pick<LibraryInfo, "name" | "registry">
+  ): Promise<LibraryMetadata | null> {
+    const registry = library.registry ?? DEFAULT_REGISTRY;
+    const key = cacheKey(registry, library.name);
+    const stored = this.persisted[key];
+    if (!this.metadataCache.has(key) && stored && this.isFresh(stored)) {
+      this.metadataCache.set(key, Promise.resolve(stored.metadata));
     }
 
-    return this.cached(this.metadataCache, name, async () => {
-      const metadata = parseLatestManifest(
-        await this.limit(() =>
-          this.fetchJson(`${REGISTRY_URL}/${encodeName(name)}/latest`, "application/json")
-        )
-      );
-      this.persist(name, metadata);
+    return this.cached(this.metadataCache, key, async () => {
+      const metadata = await this.fetchLatest(registry, library.name);
+      this.persist(key, metadata);
       return metadata;
     });
+  }
+
+  private async fetchLatest(registry: string, name: string): Promise<LibraryMetadata> {
+    const base = `${registry}/${encodeName(name)}`;
+    try {
+      return parseLatestManifest(
+        await this.limit(() => this.fetchJson(`${base}/latest`, "application/json"))
+      );
+    } catch (error) {
+      // 사내 레지스트리 중에는 /latest를 지원하지 않는 곳이 있어,
+      // 버전 목록 형식으로 다시 받아 latest 태그만 꺼낸다.
+      if (registry === DEFAULT_REGISTRY || isAuthError(error)) {
+        throw error;
+      }
+      const packument = await this.limit(() => this.fetchJson(base, ABBREVIATED_ACCEPT));
+      return { latestVersion: parseLatestTag(packument) };
+    }
   }
 
   /**
@@ -91,11 +107,14 @@ export class LibraryMetadataService implements vscode.Disposable {
   /**
    * 레지스트리에 배포된 전체 버전 목록. major 업데이트 확인창처럼 꼭 필요할 때만 받는다.
    */
-  getVersions(name: string): Promise<string[] | null> {
-    return this.cached(this.versionsCache, name, async () =>
+  getVersions(
+    name: string,
+    registry: string = DEFAULT_REGISTRY
+  ): Promise<string[] | null> {
+    return this.cached(this.versionsCache, cacheKey(registry, name), async () =>
       parseVersionList(
         await this.limit(() =>
-          this.fetchJson(`${REGISTRY_URL}/${encodeName(name)}`, ABBREVIATED_ACCEPT)
+          this.fetchJson(`${registry}/${encodeName(name)}`, ABBREVIATED_ACCEPT)
         )
       )
     );
@@ -167,6 +186,31 @@ export function parseLatestManifest(manifest: unknown): LibraryMetadata {
   };
 }
 
+// npm 공식 레지스트리의 키는 이전 버전과 같게 패키지 이름만 쓴다
+function cacheKey(registry: string, name: string) {
+  return registry === DEFAULT_REGISTRY ? name : `${registry} ${name}`;
+}
+
+function parseLatestTag(packument: unknown): string | undefined {
+  const latest = (packument as { "dist-tags"?: { latest?: unknown } } | null)?.[
+    "dist-tags"
+  ]?.latest;
+  return typeof latest === "string" && latest ? latest : undefined;
+}
+
+export class RegistryHttpError extends Error {
+  constructor(readonly status: number) {
+    super(`Registry request failed (${status})`);
+  }
+}
+
+function isAuthError(error: unknown) {
+  return (
+    error instanceof RegistryHttpError &&
+    (error.status === 401 || error.status === 403)
+  );
+}
+
 export function parseVersionList(packument: unknown): string[] {
   const versions = (packument as { versions?: unknown } | null)?.versions;
   if (!versions || typeof versions !== "object") {
@@ -175,14 +219,18 @@ export function parseVersionList(packument: unknown): string[] {
   return Object.keys(versions).filter((v) => semver.valid(v));
 }
 
+/**
+ * 레지스트리에 GET 요청을 보낸다. 인증 정보는 보내지 않는다.
+ */
 function fetchJsonOverHttps(url: string, accept: string): Promise<unknown> {
+  const client = url.startsWith("http://") ? http : https;
   return new Promise((resolve, reject) => {
-    const request = https.get(
+    const request = client.get(
       url,
       { headers: { Accept: accept, "User-Agent": "lib-extension" } },
       (response) => {
         if (response.statusCode && response.statusCode >= 400) {
-          reject(new Error(`Registry request failed (${response.statusCode})`));
+          reject(new RegistryHttpError(response.statusCode));
           response.resume();
           return;
         }

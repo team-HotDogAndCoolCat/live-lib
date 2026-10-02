@@ -18,6 +18,10 @@ export interface LibraryInfo {
   usage?: LibraryUsage;
   /** 업데이트·삭제에 쓸 패키지 매니저 */
   packageManager?: DetectedPackageManager;
+  /** .npmrc 기준으로 이 패키지를 조회할 레지스트리 주소 */
+  registry?: string;
+  /** 레지스트리 조회를 시도했지만 실패했는지 */
+  latestLookupFailed?: boolean;
 }
 
 export interface LibraryMetadata {

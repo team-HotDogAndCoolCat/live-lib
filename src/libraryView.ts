@@ -1,3 +1,4 @@
+import { DEFAULT_REGISTRY } from "./npmrc";
 import type { LibraryInfo } from "./types";
 import { planUpdate, resolveCurrentVersion } from "./version";
 
@@ -21,7 +22,14 @@ export interface LibraryView {
 export function buildLibraryView(
   lib: Pick<
     LibraryInfo,
-    "name" | "version" | "scope" | "installedVersion" | "latestVersion" | "usage"
+    | "name"
+    | "version"
+    | "scope"
+    | "installedVersion"
+    | "latestVersion"
+    | "usage"
+    | "registry"
+    | "latestLookupFailed"
   >,
   versions?: string[]
 ): LibraryView {
@@ -55,6 +63,11 @@ export function buildLibraryView(
   ];
   if (lib.latestVersion) {
     tooltipParts.push(`Latest: ${lib.latestVersion}`);
+  } else if (lib.latestLookupFailed) {
+    tooltipParts.push("Latest: not available (registry lookup failed)");
+  }
+  if (lib.registry && lib.registry !== DEFAULT_REGISTRY) {
+    tooltipParts.push(`Registry: ${lib.registry}`);
   }
   if (plan?.isMajor) {
     tooltipParts.push(

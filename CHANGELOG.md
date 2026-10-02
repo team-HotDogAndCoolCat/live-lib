@@ -6,6 +6,11 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
+### Added
+
+- `.npmrc` registry support. Latest versions are looked up in the registry set by `registry=` or `@scope:registry=` in `.npmrc` (home folder, then the project up to the repository root, closest wins), including `http://` registries. If a registry does not support `/<package>/latest`, the latest version is read from the version list instead. Credentials such as `_authToken` are never sent.
+- The tooltip shows the registry when it is not the public npm registry, and says when the latest version could not be looked up.
+
 ### Changed
 
 - Much lighter registry requests. The tree now fetches only each package's latest manifest (`/<package>/latest`, a few KB) instead of its full metadata, which can be over 10 MB for packages like `typescript`. For this extension's own 14 dependencies, data downloaded per refresh dropped from 45.3 MB to about 60 KB.
@@ -14,6 +19,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - Latest-version lookups are cached for 6 hours and kept across VS Code restarts, so reopening VS Code no longer re-queries the registry for every dependency. The refresh button clears the cache and checks the registry again. Failed lookups and full version lists are not cached.
 - The usage scan skips build output and caches (`dist`, `build`, `out`, `coverage`, `.next`, `.nuxt`, `.svelte-kit`, `.vscode-test` and similar), simple folder entries from `.gitignore`, and the `files.exclude` setting. Besides being faster, this stops minified bundles from being read as imports, which could hide an unused dependency.
 - Files that have not changed since the last scan are not read again, and files are read in parallel.
+- Dependencies that do not come from a registry (`workspace:`, `file:`, `link:`, git URLs, tarball URLs) are no longer looked up.
 
 ## [1.2.0] - 2026-10-01
 

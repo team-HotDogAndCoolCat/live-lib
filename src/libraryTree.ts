@@ -9,6 +9,11 @@ import { buildExcludeGlob } from "./scanExclude";
 import { collectUsageEvidence, type ImportCache } from "./usageEvidence";
 import { readInstalledVersion } from "./installed";
 import { buildLibraryView } from "./libraryView";
+import {
+  isRegistrySpecifier,
+  readRegistryConfig,
+  resolveRegistry,
+} from "./npmrc";
 import { detectPackageManager } from "./packageManager";
 
 type TreeItemType = "workspace" | "library" | "info";
@@ -138,17 +143,25 @@ export class LibraryTreeDataProvider
 
       const evidence = await this.collectEvidence(pkg, libraries, folder);
 
+      const registryConfig = await readRegistryConfig(folder.uri.fsPath);
+
       const items = await Promise.all(
         libraries.map(async (lib) => {
           lib.usage = classifyUsage(lib, evidence);
+          lib.registry = resolveRegistry(registryConfig, lib.name);
+          // workspace:, file:, git 주소처럼 레지스트리에 없는 패키지는 조회하지 않는다
+          const lookup = isRegistrySpecifier(lib.version);
           const [metadata, installedVersion] = await Promise.all([
-            this.metadataService.getMetadata(lib).catch(() => null),
+            lookup
+              ? this.metadataService.getMetadata(lib).catch(() => null)
+              : undefined,
             readInstalledVersion(folder.uri.fsPath, lib.name),
           ]);
 
           lib.installedVersion = installedVersion;
           lib.packageManager = packageManager;
           lib.latestVersion = metadata?.latestVersion;
+          lib.latestLookupFailed = lookup && metadata === null;
 
           const view = buildLibraryView(lib);
           const item = new LibraryTreeItem(
