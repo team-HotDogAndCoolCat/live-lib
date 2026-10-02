@@ -5,7 +5,8 @@ import type { LibraryInfo } from "./types";
 import type { LibraryMetadataService } from "./registry";
 import { extractLibraries } from "./packageJson";
 import { classifyUsage, type UsageEvidence } from "./usage";
-import { collectUsageEvidence } from "./usageEvidence";
+import { buildExcludeGlob } from "./scanExclude";
+import { collectUsageEvidence, type ImportCache } from "./usageEvidence";
 import { readInstalledVersion } from "./installed";
 import { buildLibraryView } from "./libraryView";
 import { detectPackageManager } from "./packageManager";
@@ -34,6 +35,9 @@ export class LibraryTreeDataProvider
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private readonly watcher: vscode.FileSystemWatcher | undefined;
+
+  // 파일별 import 결과. 수정되지 않은 파일은 새로고침 때 다시 읽지 않는다.
+  private readonly importCache: ImportCache = new Map();
 
   constructor(private readonly metadataService: LibraryMetadataService) {
     if (vscode.workspace.workspaceFolders?.length) {
@@ -182,10 +186,18 @@ export class LibraryTreeDataProvider
     libraries: LibraryInfo[],
     folder: vscode.WorkspaceFolder
   ): Promise<UsageEvidence> {
+    const exclude = buildExcludeGlob({
+      gitignore: await fs
+        .readFile(path.join(folder.uri.fsPath, ".gitignore"), "utf8")
+        .catch(() => ""),
+      filesExclude: vscode.workspace
+        .getConfiguration("files", folder.uri)
+        .get<Record<string, unknown>>("exclude"),
+    });
     const sourceFiles = await vscode.workspace
       .findFiles(
         new vscode.RelativePattern(folder, "**/*.{js,jsx,ts,tsx,mjs,cjs}"),
-        "**/node_modules/**"
+        new vscode.RelativePattern(folder, exclude)
       )
       .then(
         (uris) => uris.map((uri) => uri.fsPath),
@@ -196,7 +208,8 @@ export class LibraryTreeDataProvider
       folder.uri.fsPath,
       pkg,
       libraries.map((lib) => lib.name),
-      sourceFiles
+      sourceFiles,
+      this.importCache
     );
   }
 

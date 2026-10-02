@@ -3,7 +3,7 @@ import * as os from "os";
 import * as path from "path";
 import { promises as fs } from "fs";
 import { classifyUsage } from "../../usage";
-import { collectUsageEvidence } from "../../usageEvidence";
+import { collectUsageEvidence, type ImportCache } from "../../usageEvidence";
 
 suite("collectUsageEvidence", () => {
   let root: string;
@@ -87,5 +87,45 @@ suite("collectUsageEvidence", () => {
       "@types/node": "used", // node:fs import
       husky: "unverified", // 근거 없음 (devDependencies)
     });
+  });
+
+  test("수정되지 않은 파일은 다시 읽지 않고 이전 결과를 쓴다", async () => {
+    const file = await write("src/a.ts", `import "react";`);
+    // 파일 시스템의 시각은 1ms보다 정밀해서, 비교 전에 utimes로 같은 정밀도로 맞춘다
+    const mtime = new Date(2026, 0, 1);
+    await fs.utimes(file, mtime, mtime);
+    const cache: ImportCache = new Map();
+    await collectUsageEvidence(root, {}, ["react"], [file], cache);
+
+    // 내용은 바꾸되 크기와 수정 시각은 그대로 두면 캐시된 결과가 나와야 한다
+    await fs.writeFile(file, `import "vuejs";`);
+    await fs.utimes(file, mtime, mtime);
+    const reused = await collectUsageEvidence(root, {}, ["react"], [file], cache);
+    assert.ok(reused.imported.has("react"));
+    assert.ok(!reused.imported.has("vuejs"));
+  });
+
+  test("수정된 파일은 다시 읽는다", async () => {
+    const file = await write("src/a.ts", `import "react";`);
+    const cache: ImportCache = new Map();
+    await collectUsageEvidence(root, {}, ["react"], [file], cache);
+
+    await fs.writeFile(file, `import "preact";`);
+    const later = new Date(Date.now() + 10_000);
+    await fs.utimes(file, later, later);
+    const evidence = await collectUsageEvidence(root, {}, ["react"], [file], cache);
+    assert.ok(evidence.imported.has("preact"));
+    assert.ok(!evidence.imported.has("react"));
+  });
+
+  test("목록에서 사라진 파일은 캐시에서 지운다", async () => {
+    const a = await write("src/a.ts", `import "react";`);
+    const b = await write("src/b.ts", `import "vue";`);
+    const cache: ImportCache = new Map();
+    await collectUsageEvidence(root, {}, [], [a, b], cache);
+    assert.strictEqual(cache.size, 2);
+
+    await collectUsageEvidence(root, {}, [], [a], cache);
+    assert.deepStrictEqual([...cache.keys()], [a]);
   });
 });

@@ -12,6 +12,8 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - The full version list, needed to find the latest version within your range, is fetched only when the major update dialog opens. The tooltip no longer shows that version.
 - Registry requests run at most 8 at a time and time out after 10 seconds, so one slow package no longer holds up the whole tree.
 - Latest-version lookups are cached for 6 hours and kept across VS Code restarts, so reopening VS Code no longer re-queries the registry for every dependency. The refresh button clears the cache and checks the registry again. Failed lookups and full version lists are not cached.
+- The usage scan skips build output and caches (`dist`, `build`, `out`, `coverage`, `.next`, `.nuxt`, `.svelte-kit`, `.vscode-test` and similar), simple folder entries from `.gitignore`, and the `files.exclude` setting. Besides being faster, this stops minified bundles from being read as imports, which could hide an unused dependency.
+- Files that have not changed since the last scan are not read again, and files are read in parallel.
 
 ## [1.2.0] - 2026-10-01
 

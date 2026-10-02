@@ -1,5 +1,6 @@
 import * as path from "path";
 import { promises as fs } from "fs";
+import { createLimiter } from "./concurrency";
 import { readInstalledBins } from "./installed";
 import {
   extractImportedPackages,
@@ -11,6 +12,40 @@ import {
 } from "./usage";
 
 const CONFIG_FILE_PATTERN = /(\.config\.|^\..*rc$|^\..*rc\.|^tsconfig.*\.json$)/i;
+const MAX_CONCURRENT_READS = 32;
+const readLimit = createLimiter(MAX_CONCURRENT_READS);
+
+interface CachedImports {
+  mtimeMs: number;
+  size: number;
+  packages: string[];
+}
+
+/** 파일 경로 → 마지막으로 읽었을 때의 import 결과 */
+export type ImportCache = Map<string, CachedImports>;
+
+/**
+ * 파일 하나의 import를 읽는다. 수정 시각과 크기가 그대로면 이전 결과를 쓴다.
+ */
+async function readImports(
+  file: string,
+  cache: ImportCache | undefined
+): Promise<string[]> {
+  try {
+    const stat = await fs.stat(file);
+    const cached = cache?.get(file);
+    if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+      return cached.packages;
+    }
+    const packages = [
+      ...extractImportedPackages(await fs.readFile(file, "utf8")),
+    ];
+    cache?.set(file, { mtimeMs: stat.mtimeMs, size: stat.size, packages });
+    return packages;
+  } catch {
+    return [];
+  }
+}
 
 /**
  * 프로젝트 하나에서 라이브러리 사용 근거를 모은다.
@@ -23,17 +58,25 @@ export async function collectUsageEvidence(
   projectRoot: string,
   pkg: Record<string, unknown>,
   libraryNames: string[],
-  sourceFiles: string[]
+  sourceFiles: string[],
+  importCache?: ImportCache
 ): Promise<UsageEvidence> {
   const imported = new Set<string>();
-  for (const file of sourceFiles) {
-    try {
-      const content = await fs.readFile(file, "utf8");
-      for (const name of extractImportedPackages(content)) {
-        imported.add(name);
+  const results = await Promise.all(
+    sourceFiles.map((file) => readLimit(() => readImports(file, importCache)))
+  );
+  for (const packages of results) {
+    for (const name of packages) {
+      imported.add(name);
+    }
+  }
+  // 지워진 파일의 결과가 계속 쌓이지 않게 정리한다
+  if (importCache) {
+    const current = new Set(sourceFiles);
+    for (const file of importCache.keys()) {
+      if (!current.has(file)) {
+        importCache.delete(file);
       }
-    } catch {
-      continue;
     }
   }
 
