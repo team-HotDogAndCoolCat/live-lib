@@ -25,6 +25,7 @@ A VS Code extension for managing npm libraries in your project.
    - **Show Details**: View library information
    - **Update**: Update to the latest version (shown only when a newer version exists)
    - **Delete**: Remove the library
+4. Latest versions from the npm registry are cached for 6 hours, even across VS Code restarts. Click the refresh button at the top of the view to check the registry again right away.
 
 ## Requirements
 
