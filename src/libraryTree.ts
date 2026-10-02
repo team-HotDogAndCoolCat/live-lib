@@ -84,7 +84,7 @@ export class LibraryTreeDataProvider
 
     if (!folders.length) {
       const item = new LibraryTreeItem(
-        "열려 있는 워크스페이스가 없습니다",
+        vscode.l10n.t("No workspace is open."),
         vscode.TreeItemCollapsibleState.None,
         "info"
       );
@@ -111,7 +111,11 @@ export class LibraryTreeDataProvider
             packageManagerSetting(folder)
           );
           item.description = pm.name;
-          item.tooltip = `${folder.uri.fsPath}\nPackage manager: ${pm.name} (${pm.source})`;
+          item.tooltip = `${folder.uri.fsPath}\n${vscode.l10n.t(
+            "Package manager: {0} ({1})",
+            pm.name,
+            pm.source
+          )}`;
         }
         return item;
       })
@@ -138,7 +142,7 @@ export class LibraryTreeDataProvider
       );
 
       if (!libraries.length) {
-        return [this.createInfoItem("등록된 라이브러리가 없습니다.")];
+        return [this.createInfoItem(vscode.l10n.t("No dependencies found."))];
       }
 
       const evidence = await this.collectEvidence(pkg, libraries, folder);
@@ -163,7 +167,7 @@ export class LibraryTreeDataProvider
           lib.latestVersion = metadata?.latestVersion;
           lib.latestLookupFailed = lookup && metadata === null;
 
-          const view = buildLibraryView(lib);
+          const view = buildLibraryView(lib, undefined, vscode.l10n.t);
           const item = new LibraryTreeItem(
             lib.name,
             vscode.TreeItemCollapsibleState.None,
@@ -188,8 +192,8 @@ export class LibraryTreeDataProvider
     } catch (error) {
       const label =
         error instanceof Error && error.message.includes("ENOENT")
-          ? "package.json을 찾을 수 없습니다."
-          : "라이브러리 정보를 불러오지 못했습니다.";
+          ? vscode.l10n.t("Could not find package.json.")
+          : vscode.l10n.t("Could not load the dependencies.");
       return [this.createInfoItem(label)];
     }
   }

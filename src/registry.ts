@@ -143,7 +143,7 @@ export class LibraryMetadataService implements vscode.Disposable {
     }
     this.persisted[name] = { metadata, fetchedAt: this.now() };
     Promise.resolve(this.store.update(CACHE_STORAGE_KEY, this.persisted)).catch(
-      (error) => console.warn("[lib-extension] 캐시 저장 실패", error)
+      (error) => console.warn("[lib-extension] Failed to save the registry cache", error)
     );
   }
 
@@ -158,7 +158,7 @@ export class LibraryMetadataService implements vscode.Disposable {
       return existing;
     }
     const pending = load().catch((error) => {
-      console.warn(`[lib-extension] 레지스트리 조회 실패: ${key}`, error);
+      console.warn(`[lib-extension] Registry lookup failed: ${key}`, error);
       return null;
     });
     cache.set(key, pending);

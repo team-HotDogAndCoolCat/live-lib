@@ -24,6 +24,8 @@ import {
 
 type LibraryCommandArg = LibraryTreeItem | LibraryInfo | undefined;
 
+const t = vscode.l10n.t;
+
 function resolveLibrary(arg: LibraryCommandArg) {
   return arg instanceof LibraryTreeItem ? arg.library : arg;
 }
@@ -64,40 +66,42 @@ async function showLibraryInfo(
   const library = resolveLibrary(arg);
 
   if (!library) {
-    vscode.window.showWarningMessage("라이브러리 정보를 불러올 수 없습니다.");
+    vscode.window.showWarningMessage(t("Could not load library information."));
     return;
   }
 
   const metadata = await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: `${library.name} 정보를 불러오는 중...`,
+      title: t("Loading {0}...", library.name),
       cancellable: false,
     },
     async () => metadataService.getMetadata(library)
   );
 
   const detailLines = [
-    `Name: ${library.name}`,
-    `Installed: ${library.installedVersion ?? "Not installed"}`,
-    `Declared: ${library.version}`,
+    t("Name: {0}", library.name),
+    t("Installed: {0}", library.installedVersion ?? t("Not installed")),
+    t("Declared: {0}", library.version),
   ];
 
-  if (metadata?.description) {
-    detailLines.push("", "Description", metadata.description);
-  } else {
-    detailLines.push("", "Description", "Not available.");
-  }
+  detailLines.push(
+    "",
+    t("Description"),
+    metadata?.description ?? t("Not available.")
+  );
 
   if (metadata?.homepage) {
-    detailLines.push("", `Homepage: ${metadata.homepage}`);
+    detailLines.push("", t("Homepage: {0}", metadata.homepage));
   }
 
   const detail = detailLines.join("\n");
 
-  const actions = ["Copy"];
+  const copyAction = t("Copy");
+  const openHomepageAction = t("Open Homepage");
+  const actions = [copyAction];
   if (metadata?.homepage) {
-    actions.unshift("Open Homepage");
+    actions.unshift(openHomepageAction);
   }
 
   const action = await vscode.window.showInformationMessage(
@@ -106,10 +110,10 @@ async function showLibraryInfo(
     ...actions
   );
 
-  if (action === "Copy") {
+  if (action === copyAction) {
     await vscode.env.clipboard.writeText(detail);
-    vscode.window.showInformationMessage("라이브러리 정보가 복사되었습니다.");
-  } else if (action === "Open Homepage" && metadata?.homepage) {
+    vscode.window.showInformationMessage(t("Library information copied."));
+  } else if (action === openHomepageAction && metadata?.homepage) {
     vscode.env.openExternal(vscode.Uri.parse(metadata.homepage));
   }
 }
@@ -122,15 +126,13 @@ async function updateLibrary(
   const library = resolveLibrary(arg);
 
   if (!library) {
-    vscode.window.showWarningMessage(
-      "업데이트할 라이브러리를 찾을 수 없습니다."
-    );
+    vscode.window.showWarningMessage(t("Could not find the library to update."));
     return;
   }
 
   if (!library.workspaceFolder) {
     vscode.window.showWarningMessage(
-      "워크스페이스 정보를 찾을 수 없어 업데이트를 실행할 수 없습니다."
+      t("Could not find the workspace folder, so the update was not run.")
     );
     return;
   }
@@ -143,7 +145,7 @@ async function updateLibrary(
 
   if (!latestVersion) {
     vscode.window.showWarningMessage(
-      "최신 버전 정보를 가져올 수 없어 업데이트를 실행할 수 없습니다."
+      t("Could not get the latest version, so the update was not run.")
     );
     return;
   }
@@ -164,7 +166,7 @@ async function updateLibrary(
     const versions = await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
-        title: `${library.name} 버전 목록을 불러오는 중...`,
+        title: t("Loading versions of {0}...", library.name),
       },
       () => metadataService.getVersions(library.name, library.registry)
     );
@@ -191,7 +193,10 @@ async function updateLibrary(
 
   if (!isSafePackageName(library.name) || !isSafeVersion(targetVersion)) {
     vscode.window.showErrorMessage(
-      `허용되지 않는 패키지 이름 또는 버전이라 업데이트를 실행하지 않았습니다: ${library.name}@${targetVersion}`
+      t(
+        "The update was not run because the package name or version is not allowed: {0}",
+        `${library.name}@${targetVersion}`
+      )
     );
     return;
   }
@@ -208,7 +213,7 @@ async function updateLibrary(
   );
 
   vscode.window.showInformationMessage(
-    `${library.name} 업데이트를 시작했습니다 (${targetVersion}).`
+    t("Started updating {0} to {1}.", library.name, targetVersion)
   );
 
   treeDataProvider.refresh();
@@ -224,25 +229,33 @@ async function confirmMajorUpdate(
   plan: UpdatePlan,
   homepage: string | undefined
 ): Promise<string | undefined> {
-  const updateLatest = `${plan.latest}로 업데이트 (major)`;
+  const updateLatest = t("Update to {0} (major)", plan.latest);
   const updateWanted = plan.wanted
-    ? `${plan.wanted}로 업데이트 (범위 내 최신)`
+    ? t("Update to {0} (latest within range)", plan.wanted)
     : undefined;
-  const openHomepage = homepage ? "변경 내역 확인" : undefined;
+  const openHomepage = homepage ? t("Check What Changed") : undefined;
 
   const actions = [updateWanted, updateLatest, openHomepage].filter(
     (action): action is string => !!action
   );
 
   const choice = await vscode.window.showWarningMessage(
-    `${name} ${currentVersion ?? declaredRange} → ${plan.latest}은(는) major 업데이트입니다.`,
+    t(
+      "{0} {1} → {2} is a major update.",
+      name,
+      currentVersion ?? declaredRange,
+      plan.latest
+    ),
     {
       modal: true,
       detail:
-        `package.json에 적힌 범위(${declaredRange})를 벗어나는 버전이라 호환되지 않는 변경이 있을 수 있습니다. ` +
-        "변경 내역을 확인한 뒤 업데이트하세요." +
+        t(
+          "This version is outside the range in package.json ({0}), so it may include breaking changes. Check what changed before updating.",
+          declaredRange
+        ) +
         (plan.wanted
-          ? `\n\n범위 안에서 가장 높은 버전은 ${plan.wanted}입니다.`
+          ? "\n\n" +
+            t("The highest version within the range is {0}.", plan.wanted)
           : ""),
     },
     ...actions
@@ -264,20 +277,23 @@ async function deleteLibrary(arg: LibraryCommandArg) {
   const library = resolveLibrary(arg);
 
   if (!library) {
-    vscode.window.showWarningMessage("삭제할 라이브러리를 찾을 수 없습니다.");
+    vscode.window.showWarningMessage(t("Could not find the library to delete."));
     return;
   }
 
   if (!library.workspaceFolder) {
     vscode.window.showWarningMessage(
-      "워크스페이스 정보를 찾을 수 없어 삭제를 실행할 수 없습니다."
+      t("Could not find the workspace folder, so the delete was not run.")
     );
     return;
   }
 
   if (!isSafePackageName(library.name)) {
     vscode.window.showErrorMessage(
-      `허용되지 않는 패키지 이름이라 삭제를 실행하지 않았습니다: ${library.name}`
+      t(
+        "The delete was not run because the package name is not allowed: {0}",
+        library.name
+      )
     );
     return;
   }
@@ -286,13 +302,17 @@ async function deleteLibrary(arg: LibraryCommandArg) {
     await resolvePackageManager(library),
     library.name
   );
+  const deleteAction = t("Delete");
   const confirm = await vscode.window.showWarningMessage(
-    `${library.name}을(를) 삭제하시겠습니까?`,
-    { modal: true, detail: `터미널에서 \`${removeCommand}\`를 실행합니다.` },
-    "삭제"
+    t("Delete {0}?", library.name),
+    {
+      modal: true,
+      detail: t("This runs `{0}` in the terminal.", removeCommand),
+    },
+    deleteAction
   );
 
-  if (confirm !== "삭제") {
+  if (confirm !== deleteAction) {
     return;
   }
 
@@ -305,7 +325,7 @@ async function deleteLibrary(arg: LibraryCommandArg) {
   terminal.show();
   terminal.sendText(removeCommand);
 
-  vscode.window.showInformationMessage(`${library.name} 삭제를 시작했습니다.`);
+  vscode.window.showInformationMessage(t("Started deleting {0}.", library.name));
 }
 
 /**

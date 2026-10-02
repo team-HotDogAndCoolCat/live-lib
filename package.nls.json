@@ -1,0 +1,13 @@
+{
+  "command.refresh": "Refresh",
+  "command.showDetails": "Show Details",
+  "command.update": "Update",
+  "command.delete": "Delete",
+  "view.dependencies": "Dependencies",
+  "config.packageManager.description": "Package manager used by **Update** and **Delete**. Choose a specific one if automatic detection picks the wrong package manager for this project.",
+  "config.packageManager.auto": "Detect from the packageManager field in package.json, then from the lockfile.",
+  "config.packageManager.npm": "Always use npm.",
+  "config.packageManager.pnpm": "Always use pnpm.",
+  "config.packageManager.yarn": "Always use yarn.",
+  "config.packageManager.bun": "Always use bun."
+}

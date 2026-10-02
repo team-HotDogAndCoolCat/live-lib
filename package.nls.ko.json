@@ -1,0 +1,13 @@
+{
+  "command.refresh": "새로고침",
+  "command.showDetails": "세부 정보 보기",
+  "command.update": "업데이트",
+  "command.delete": "삭제",
+  "view.dependencies": "의존성",
+  "config.packageManager.description": "**업데이트**와 **삭제**에 쓸 패키지 매니저입니다. 자동 감지 결과가 이 프로젝트와 맞지 않으면 직접 지정하세요.",
+  "config.packageManager.auto": "package.json의 packageManager 필드를 먼저 보고, 없으면 lockfile로 감지합니다.",
+  "config.packageManager.npm": "항상 npm을 사용합니다.",
+  "config.packageManager.pnpm": "항상 pnpm을 사용합니다.",
+  "config.packageManager.yarn": "항상 yarn을 사용합니다.",
+  "config.packageManager.bun": "항상 bun을 사용합니다."
+}
