@@ -39,6 +39,10 @@ Latest versions are looked up in the registry set in `.npmrc` (`registry=` and `
 
 Live Lib never sends credentials such as `_authToken`. Packages from a registry that requires authentication show "Latest: not available" in the tooltip.
 
+## Language
+
+The interface follows VS Code's display language. English is the default, and Korean is available when VS Code is set to Korean.
+
 ## Extension Settings
 
 | Setting | Default | Description |

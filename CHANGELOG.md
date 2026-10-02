@@ -4,6 +4,12 @@ All notable changes to the "Live Lib" extension will be documented in this file.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The interface is now English by default and Korean when VS Code's display language is Korean. Previously command names and messages mixed Korean and English, so some confirmation dialogs (such as Delete and the major update warning) appeared only in Korean.
+
 ## [1.3.0] - 2026-10-02
 
 ### Added
