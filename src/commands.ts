@@ -147,15 +147,30 @@ async function updateLibrary(
     library.version,
     library.installedVersion
   );
-  const plan = planUpdate({
+  let plan = planUpdate({
     declaredRange: library.version,
     currentVersion,
     latestVersion,
-    versions: metadata?.versions,
   });
 
   let targetVersion = latestVersion;
   if (plan?.isMajor) {
+    // 범위 내 최신 버전을 찾으려면 전체 버전 목록이 필요하다. 수 MB일 수 있어 이때만 받는다.
+    const versions = await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: `${library.name} 버전 목록을 불러오는 중...`,
+      },
+      () => metadataService.getVersions(library.name)
+    );
+    plan =
+      planUpdate({
+        declaredRange: library.version,
+        currentVersion,
+        latestVersion,
+        versions: versions ?? undefined,
+      }) ?? plan;
+
     const chosen = await confirmMajorUpdate(
       library.name,
       library.version,
