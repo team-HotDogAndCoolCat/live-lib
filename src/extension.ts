@@ -4,7 +4,9 @@ import { LibraryTreeDataProvider } from "./libraryTree";
 import { LibraryMetadataService } from "./registry";
 
 export function activate(context: vscode.ExtensionContext) {
-  const metadataService = new LibraryMetadataService();
+  const metadataService = new LibraryMetadataService({
+    store: context.globalState,
+  });
   const treeDataProvider = new LibraryTreeDataProvider(metadataService);
 
   context.subscriptions.push(

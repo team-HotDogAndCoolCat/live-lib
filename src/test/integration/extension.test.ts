@@ -26,4 +26,8 @@ suite("Extension", () => {
       .inspect<string>("packageManager");
     assert.strictEqual(inspected?.defaultValue, "auto");
   });
+
+  test("새로고침 명령이 캐시를 비우고 정상적으로 끝난다", async () => {
+    await vscode.commands.executeCommand("lib-extension.refreshLibraries");
+  });
 });

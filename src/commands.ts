@@ -33,8 +33,13 @@ export function registerCommands(
   treeDataProvider: LibraryTreeDataProvider
 ): vscode.Disposable[] {
   return [
-    vscode.commands.registerCommand("lib-extension.refreshLibraries", () =>
-      treeDataProvider.refresh()
+    vscode.commands.registerCommand(
+      "lib-extension.refreshLibraries",
+      async () => {
+        // 새로고침 버튼은 저장된 정보를 무시하고 레지스트리를 다시 조회한다
+        await metadataService.clearCache();
+        treeDataProvider.refresh();
+      }
     ),
     vscode.commands.registerCommand(
       "lib-extension.showLibraryInfo",
