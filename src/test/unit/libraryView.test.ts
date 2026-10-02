@@ -153,4 +153,30 @@ suite("buildLibraryView", () => {
 
     assert.ok(view.tooltip.endsWith("Latest within range: 18.3.1"));
   });
+
+  test("레지스트리 조회에 실패하면 툴팁에 알려준다", () => {
+    const view = buildLibraryView({
+      ...base,
+      version: "^2.0.0",
+      installedVersion: "2.1.0",
+      latestLookupFailed: true,
+    });
+    assert.ok(view.tooltip.includes("Latest: not available (registry lookup failed)"));
+    assert.strictEqual(view.description, "2.1.0");
+  });
+
+  test("npm 공식 레지스트리가 아니면 툴팁에 레지스트리 주소를 보여준다", () => {
+    const custom = buildLibraryView({
+      ...base,
+      version: "^2.0.0",
+      registry: "https://npm.mycompany.com",
+    });
+    const npmjs = buildLibraryView({
+      ...base,
+      version: "^2.0.0",
+      registry: "https://registry.npmjs.org",
+    });
+    assert.ok(custom.tooltip.includes("Registry: https://npm.mycompany.com"));
+    assert.ok(!npmjs.tooltip.includes("Registry:"));
+  });
 });
