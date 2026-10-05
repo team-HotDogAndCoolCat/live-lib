@@ -4,6 +4,12 @@ All notable changes to the "Live Lib" extension will be documented in this file.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The Marketplace description mentions "libraries" again ("Manage your project's npm libraries in the sidebar…"), and `libraries` and `lib` were added to the keywords. Since 1.0.1 the extension no longer showed up when searching the Marketplace for "library" or "libraries".
+
 ## [1.3.1] - 2026-10-03
 
 ### Changed
