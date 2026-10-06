@@ -263,3 +263,47 @@ export async function discoverWorkspacePackages(
   const config = await readWorkspacePatterns(root, pkg);
   return config ? findWorkspacePackages(root, config.patterns) : [];
 }
+
+async function pathExists(file: string) {
+  return fs.stat(file).then(
+    () => true,
+    () => false
+  );
+}
+
+/**
+ * dir이 어떤 모노레포에 선언된 하위 패키지면 그 모노레포 루트를 찾는다.
+ * VS Code에서 하위 패키지 폴더(예: apps/web)만 따로 연 경우에 쓴다.
+ * 부모 폴더부터 저장소 루트(.git이 있는 폴더)까지 올라가며, workspaces 패턴에
+ * dir이 실제로 들어 있는 폴더를 찾는다. 선언되지 않은 폴더면 undefined를 돌려준다.
+ */
+export async function findWorkspaceRoot(
+  dir: string
+): Promise<string | undefined> {
+  const target = path.resolve(dir);
+  let current = target;
+  for (;;) {
+    // 저장소 루트에 닿으면 더 위로는 올라가지 않는다
+    if (await pathExists(path.join(current, ".git"))) {
+      return undefined;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return undefined;
+    }
+    current = parent;
+
+    const pkg = await fs
+      .readFile(path.join(current, "package.json"), "utf8")
+      .then((text) => JSON.parse(text) as Record<string, unknown>)
+      .catch(() => ({}));
+    const config = await readWorkspacePatterns(current, pkg);
+    if (!config) {
+      continue;
+    }
+    const packages = await findWorkspacePackages(current, config.patterns);
+    if (packages.some((workspacePackage) => workspacePackage.dir === target)) {
+      return current;
+    }
+  }
+}
