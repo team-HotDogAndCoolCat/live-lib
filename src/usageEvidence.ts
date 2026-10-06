@@ -53,13 +53,17 @@ async function readImports(
  * - package.json scripts에서 실행하는 명령
  * - 루트의 설정 파일 이름과, 설정 파일 안에 문자열로 적힌 패키지 이름
  * - package.json 최상위의 도구 설정 키
+ *
+ * 모노레포 하위 패키지면 projectRoot는 그 패키지 폴더이고, installRoot는 설치된 bin을
+ * 찾을 때 올라갈 모노레포 루트다.
  */
 export async function collectUsageEvidence(
   projectRoot: string,
   pkg: Record<string, unknown>,
   libraryNames: string[],
   sourceFiles: string[],
-  importCache?: ImportCache
+  importCache?: ImportCache,
+  installRoot?: string
 ): Promise<UsageEvidence> {
   const imported = new Set<string>();
   const results = await Promise.all(
@@ -70,11 +74,15 @@ export async function collectUsageEvidence(
       imported.add(name);
     }
   }
-  // 지워진 파일의 결과가 계속 쌓이지 않게 정리한다
+  // 지워진 파일의 결과가 계속 쌓이지 않게 정리한다.
+  // 캐시는 여러 패키지가 함께 쓰므로 이번에 훑은 폴더 안의 항목만 정리한다.
   if (importCache) {
     const current = new Set(sourceFiles);
+    const scope = projectRoot.endsWith(path.sep)
+      ? projectRoot
+      : projectRoot + path.sep;
     for (const file of importCache.keys()) {
-      if (!current.has(file)) {
+      if (file.startsWith(scope) && !current.has(file)) {
         importCache.delete(file);
       }
     }
@@ -91,7 +99,7 @@ export async function collectUsageEvidence(
     await Promise.all(
       libraryNames.map(
         async (name) =>
-          [name, await readInstalledBins(projectRoot, name)] as const
+          [name, await readInstalledBins(projectRoot, name, installRoot)] as const
       )
     )
   );

@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as path from "path";
 import { promises as fs } from "fs";
 import type { LibraryInfo } from "./types";
 import type { LibraryMetadataService } from "./registry";
@@ -203,7 +204,7 @@ async function updateLibrary(
 
   const terminal = vscode.window.createTerminal({
     name: `Update ${library.name}`,
-    cwd: library.workspaceFolder.uri.fsPath,
+    cwd: packageDirOf(library),
   });
 
   terminal.show();
@@ -319,13 +320,21 @@ async function deleteLibrary(arg: LibraryCommandArg) {
   // package.json 수정은 패키지 매니저에 맡긴다 (직접 수정하면 들여쓰기 등 포맷이 바뀜)
   const terminal = vscode.window.createTerminal({
     name: `Delete ${library.name}`,
-    cwd: library.workspaceFolder.uri.fsPath,
+    cwd: packageDirOf(library),
   });
 
   terminal.show();
   terminal.sendText(removeCommand);
 
   vscode.window.showInformationMessage(t("Started deleting {0}.", library.name));
+}
+
+/**
+ * 라이브러리가 적힌 package.json의 폴더. 업데이트·삭제 명령을 여기서 실행한다.
+ * 모노레포 하위 패키지에서 실행하면 npm·pnpm·yarn·bun 모두 그 패키지의 package.json을 고친다.
+ */
+function packageDirOf(library: LibraryInfo) {
+  return path.dirname(library.packageJsonPath);
 }
 
 /**
@@ -348,7 +357,7 @@ async function resolvePackageManager(
   }
   return (
     await detectPackageManager(
-      library.workspaceFolder.uri.fsPath,
+      packageDirOf(library),
       pkg,
       packageManagerSetting(library.workspaceFolder)
     )
