@@ -3,7 +3,7 @@
   "displayName": "Live Lib",
   "description": "Manage your project's npm libraries in the sidebar: see outdated and unused dependencies, then update or remove them in one click",
   "publisher": "gugitgugit",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "icon": "logo.png",
   "license": "MIT",
   "repository": {
