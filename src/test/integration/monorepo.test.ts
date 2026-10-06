@@ -33,6 +33,7 @@ suite("Monorepo", () => {
   suiteSetup(async () => {
     root = await fs.mkdtemp(path.join(os.tmpdir(), "live-lib-monorepo-"));
     folder = { uri: vscode.Uri.file(root), name: "monorepo", index: 0 };
+    await fs.mkdir(path.join(root, ".git"));
 
     // npm처럼 하위 패키지의 의존성을 루트 node_modules에 모아 설치한 상태
     await write("package.json", {
@@ -166,5 +167,28 @@ suite("Monorepo", () => {
     } finally {
       await fs.rm(single, { recursive: true, force: true });
     }
+  });
+
+  test("하위 패키지 폴더만 열어도 모노레포 루트 기준으로 찾는다", async () => {
+    const webDir = path.join(root, "apps", "web");
+    const webFolder = { uri: vscode.Uri.file(webDir), name: "web", index: 0 };
+    const items = await provider.getLibrariesForPackage(webFolder);
+    const web = new Map(
+      items.flatMap((item) => (item.library ? [[item.library.name, item.library]] : []))
+    );
+
+    // 루트 node_modules에 설치된 버전
+    assert.strictEqual(web.get("react")?.installedVersion, "18.3.1");
+    // 내부 패키지는 레지스트리에서 조회하지 않는다
+    assert.strictEqual(web.get("admin")?.latestVersion, undefined);
+    assert.strictEqual(web.get("react")?.latestVersion, "99.0.0");
+    // 루트 package.json의 packageManager 필드를 따른다
+    assert.deepStrictEqual(web.get("react")?.packageManager, {
+      name: "pnpm",
+      source: "packageManager field",
+    });
+    // 사용 여부는 그대로 그 폴더 안에서만 본다
+    assert.strictEqual(web.get("react")?.usage, "used");
+    assert.strictEqual(web.get("lodash")?.usage, "unused");
   });
 });

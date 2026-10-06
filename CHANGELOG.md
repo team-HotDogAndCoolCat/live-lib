@@ -4,6 +4,12 @@ All notable changes to the "Live Lib" extension will be documented in this file.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Opening only a workspace package folder of a monorepo (for example `apps/web`) now uses the monorepo root, just like opening the repository root: versions installed in the root `node_modules` are found, other packages in the monorepo are not looked up in the registry, and the root `packageManager` field is used. Folders that are not declared as workspace packages work as before.
+
 ## [1.4.0] - 2026-10-06
 
 ### Added
