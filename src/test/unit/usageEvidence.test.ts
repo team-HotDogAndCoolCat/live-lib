@@ -128,4 +128,34 @@ suite("collectUsageEvidence", () => {
     await collectUsageEvidence(root, {}, [], [a], cache);
     assert.deepStrictEqual([...cache.keys()], [a]);
   });
+
+  test("캐시 정리는 이번에 훑은 폴더 안의 항목만 한다", async () => {
+    const web = await write("apps/web/src/a.ts", `import "react";`);
+    const admin = await write("apps/admin/src/b.ts", `import "vue";`);
+    const cache: ImportCache = new Map();
+    await collectUsageEvidence(path.join(root, "apps", "web"), {}, [], [web], cache);
+    await collectUsageEvidence(path.join(root, "apps", "admin"), {}, [], [admin], cache);
+    assert.deepStrictEqual([...cache.keys()].sort(), [admin, web].sort());
+
+    // apps/web을 다시 훑어도 apps/admin 결과는 남는다
+    await collectUsageEvidence(path.join(root, "apps", "web"), {}, [], [], cache);
+    assert.deepStrictEqual([...cache.keys()], [admin]);
+  });
+
+  test("하위 패키지 scripts의 명령은 루트 node_modules의 bin으로 찾는다", async () => {
+    await write(
+      "node_modules/typescript/package.json",
+      JSON.stringify({ version: "5.9.3", bin: { tsc: "bin/tsc" } })
+    );
+    const pkg = { scripts: { build: "tsc -p ." } };
+    const web = path.join(root, "apps", "web");
+    await fs.mkdir(web, { recursive: true });
+
+    const scoped = await collectUsageEvidence(web, pkg, ["typescript"], [], undefined, root);
+    assert.ok(scoped.referenced.has("typescript"));
+
+    // 루트를 모르면 bin 이름(tsc)을 알 수 없어 찾지 못한다
+    const unscoped = await collectUsageEvidence(web, pkg, ["typescript"], []);
+    assert.ok(!unscoped.referenced.has("typescript"));
+  });
 });
