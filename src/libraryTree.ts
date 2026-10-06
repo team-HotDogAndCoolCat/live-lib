@@ -72,8 +72,8 @@ export class LibraryTreeDataProvider
       return this.getWorkspaceItems();
     }
 
-    if (element.type === "workspace") {
-      return this.getLibrariesForWorkspace(element.workspaceFolder);
+    if (element.type === "workspace" && element.workspaceFolder) {
+      return this.getLibrariesForPackage(element.workspaceFolder);
     }
 
     return [];
@@ -122,22 +122,26 @@ export class LibraryTreeDataProvider
     );
   }
 
-  private async getLibrariesForWorkspace(
-    folder?: vscode.WorkspaceFolder
+  /**
+   * package.json 하나의 라이브러리 목록을 만든다.
+   * packageDir를 주지 않으면 워크스페이스 폴더 루트의 package.json을 읽는다.
+   * 모노레포 하위 패키지면 설치 버전은 워크스페이스 루트까지 올라가며 찾고,
+   * 사용 여부는 그 패키지 폴더 안에서만 판단한다.
+   */
+  async getLibrariesForPackage(
+    folder: vscode.WorkspaceFolder,
+    packageDir: string = folder.uri.fsPath
   ): Promise<LibraryTreeItem[]> {
-    if (!folder) {
-      return [];
-    }
-
-    const packageJsonPath = path.join(folder.uri.fsPath, "package.json");
+    const root = folder.uri.fsPath;
+    const packageJsonPath = path.join(packageDir, "package.json");
 
     try {
       const fileContents = await fs.readFile(packageJsonPath, "utf8");
       const pkg = JSON.parse(fileContents);
       const libraries = extractLibraries(pkg, folder, packageJsonPath);
       const packageManager = await detectPackageManager(
-        folder.uri.fsPath,
-        pkg,
+        packageDir,
+        await withRootPackageManagerField(pkg, root, packageDir),
         packageManagerSetting(folder)
       );
 
@@ -145,9 +149,14 @@ export class LibraryTreeDataProvider
         return [this.createInfoItem(vscode.l10n.t("No dependencies found."))];
       }
 
-      const evidence = await this.collectEvidence(pkg, libraries, folder);
+      const evidence = await this.collectEvidence(
+        pkg,
+        libraries,
+        folder,
+        packageDir
+      );
 
-      const registryConfig = await readRegistryConfig(folder.uri.fsPath);
+      const registryConfig = await readRegistryConfig(packageDir);
 
       const items = await Promise.all(
         libraries.map(async (lib) => {
@@ -159,7 +168,7 @@ export class LibraryTreeDataProvider
             lookup
               ? this.metadataService.getMetadata(lib).catch(() => null)
               : undefined,
-            readInstalledVersion(folder.uri.fsPath, lib.name),
+            readInstalledVersion(packageDir, lib.name, root),
           ]);
 
           lib.installedVersion = installedVersion;
@@ -198,23 +207,35 @@ export class LibraryTreeDataProvider
     }
   }
 
+  /**
+   * packageDir 아래의 코드에서 사용 근거를 모은다.
+   * 루트 패키지는 하위 패키지 폴더까지 포함해 훑는다. 루트에 둔 공용 의존성을
+   * 하위 패키지가 import하는 경우가 많아서, 빼면 실제로 쓰는 라이브러리가 unused로 보인다.
+   */
   private async collectEvidence(
     pkg: Record<string, unknown>,
     libraries: LibraryInfo[],
-    folder: vscode.WorkspaceFolder
+    folder: vscode.WorkspaceFolder,
+    packageDir: string
   ): Promise<UsageEvidence> {
+    const root = folder.uri.fsPath;
+    const readGitignore = (dir: string) =>
+      fs.readFile(path.join(dir, ".gitignore"), "utf8").catch(() => "");
+    const gitignores = [await readGitignore(root)];
+    if (packageDir !== root) {
+      gitignores.push(await readGitignore(packageDir));
+    }
     const exclude = buildExcludeGlob({
-      gitignore: await fs
-        .readFile(path.join(folder.uri.fsPath, ".gitignore"), "utf8")
-        .catch(() => ""),
+      gitignore: gitignores.join("\n"),
       filesExclude: vscode.workspace
         .getConfiguration("files", folder.uri)
         .get<Record<string, unknown>>("exclude"),
     });
+    const base = vscode.Uri.file(packageDir);
     const sourceFiles = await vscode.workspace
       .findFiles(
-        new vscode.RelativePattern(folder, "**/*.{js,jsx,ts,tsx,mjs,cjs}"),
-        new vscode.RelativePattern(folder, exclude)
+        new vscode.RelativePattern(base, "**/*.{js,jsx,ts,tsx,mjs,cjs}"),
+        new vscode.RelativePattern(base, exclude)
       )
       .then(
         (uris) => uris.map((uri) => uri.fsPath),
@@ -222,11 +243,12 @@ export class LibraryTreeDataProvider
       );
 
     return collectUsageEvidence(
-      folder.uri.fsPath,
+      packageDir,
       pkg,
       libraries.map((lib) => lib.name),
       sourceFiles,
-      this.importCache
+      this.importCache,
+      root
     );
   }
 
@@ -254,6 +276,27 @@ async function readPackageJson(
   } catch {
     return undefined;
   }
+}
+
+/**
+ * 하위 패키지에는 보통 packageManager 필드가 없고 루트에만 있다.
+ * 하위 패키지에 없으면 루트 package.json의 값을 대신 쓴다.
+ */
+async function withRootPackageManagerField(
+  pkg: Record<string, unknown>,
+  root: string,
+  packageDir: string
+): Promise<Record<string, unknown>> {
+  if (packageDir === root || pkg.packageManager !== undefined) {
+    return pkg;
+  }
+  const rootPkg = await fs
+    .readFile(path.join(root, "package.json"), "utf8")
+    .then(JSON.parse, () => undefined)
+    .catch(() => undefined);
+  return rootPkg?.packageManager !== undefined
+    ? { ...pkg, packageManager: rootPkg.packageManager }
+    : pkg;
 }
 
 export function packageManagerSetting(folder: vscode.WorkspaceFolder) {
