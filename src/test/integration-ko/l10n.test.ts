@@ -21,5 +21,6 @@ suite("한국어 VS Code", () => {
     await extension.activate();
     assert.strictEqual(vscode.l10n.t("Delete {0}?", "lodash"), "lodash을(를) 삭제하시겠습니까?");
     assert.strictEqual(vscode.l10n.t("{0} (unused)", "1.0.0"), "1.0.0 (미사용)");
+    assert.strictEqual(vscode.l10n.t("(root)"), "(루트)");
   });
 });

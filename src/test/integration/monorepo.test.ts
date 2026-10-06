@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import * as os from "os";
 import * as path from "path";
 import { promises as fs } from "fs";
-import { LibraryTreeDataProvider } from "../../libraryTree";
+import { LibraryTreeDataProvider, LibraryTreeItem } from "../../libraryTree";
 import { LibraryMetadataService } from "../../registry";
 
 suite("Monorepo", () => {
@@ -48,7 +48,8 @@ suite("Monorepo", () => {
 
     await write("apps/web/package.json", {
       name: "web",
-      dependencies: { react: "^18.0.0", lodash: "^4.0.0" },
+      // npm·yarn은 내부 패키지를 "*"처럼 버전 범위로 적는다
+      dependencies: { react: "^18.0.0", lodash: "^4.0.0", admin: "*" },
     });
     await write(
       "apps/web/src/index.ts",
@@ -74,7 +75,7 @@ suite("Monorepo", () => {
 
   test("하위 패키지의 설치 버전을 루트 node_modules에서 찾는다", async () => {
     const web = await libraries("apps/web");
-    assert.deepStrictEqual([...web.keys()].sort(), ["lodash", "react"]);
+    assert.deepStrictEqual([...web.keys()].sort(), ["admin", "lodash", "react"]);
     assert.strictEqual(web.get("react")?.installedVersion, "18.3.1");
     assert.strictEqual(web.get("lodash")?.installedVersion, "4.17.21");
     assert.strictEqual(
@@ -105,5 +106,65 @@ suite("Monorepo", () => {
       name: "pnpm",
       source: "packageManager field",
     });
+  });
+
+  test("워크스페이스 폴더를 펼치면 루트와 하위 패키지가 나란히 나온다", async () => {
+    const workspaceItem = new LibraryTreeItem(
+      "monorepo",
+      vscode.TreeItemCollapsibleState.Collapsed,
+      "workspace",
+      folder
+    );
+    const children = await provider.getChildren(workspaceItem);
+    assert.deepStrictEqual(
+      children.map((item) => [item.type, item.label, item.description]),
+      [
+        ["package", "(root)", "root"],
+        ["package", "apps/admin", "admin"],
+        ["package", "apps/web", "web"],
+      ]
+    );
+
+    // 패키지 줄을 펼치면 그 패키지의 라이브러리가 나온다
+    const web = children[2];
+    assert.strictEqual(web.packageDir, path.join(root, "apps", "web"));
+    const libs = await provider.getChildren(web);
+    assert.deepStrictEqual(
+      libs.map((item) => item.label).sort(),
+      ["admin", "lodash", "react"]
+    );
+  });
+
+  test("내부 패키지는 레지스트리에서 최신 버전을 조회하지 않는다", async () => {
+    const web = await libraries("apps/web");
+    // 조회했다면 가짜 레지스트리가 돌려주는 99.0.0이 들어간다
+    assert.strictEqual(web.get("react")?.latestVersion, "99.0.0");
+    assert.strictEqual(web.get("admin")?.latestVersion, undefined);
+    assert.strictEqual(web.get("admin")?.latestLookupFailed, false);
+  });
+
+  test("모노레포가 아니면 폴더 아래에 라이브러리가 바로 나온다", async () => {
+    const single = await fs.mkdtemp(path.join(os.tmpdir(), "live-lib-single-"));
+    try {
+      await fs.writeFile(
+        path.join(single, "package.json"),
+        JSON.stringify({ name: "single", dependencies: { react: "^18.0.0" } })
+      );
+      const singleFolder = { uri: vscode.Uri.file(single), name: "single", index: 0 };
+      const children = await provider.getChildren(
+        new LibraryTreeItem(
+          "single",
+          vscode.TreeItemCollapsibleState.Collapsed,
+          "workspace",
+          singleFolder
+        )
+      );
+      assert.deepStrictEqual(
+        children.map((item) => [item.type, item.label]),
+        [["library", "react"]]
+      );
+    } finally {
+      await fs.rm(single, { recursive: true, force: true });
+    }
   });
 });
