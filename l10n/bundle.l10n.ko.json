@@ -44,5 +44,7 @@
   "Major update: outside {0}, may include breaking changes": "major 업데이트: {0} 범위를 벗어나 호환되지 않는 변경이 있을 수 있음",
   "Latest within range: {0}": "범위 내 최신 버전: {0}",
   "Unused: not imported anywhere in the project": "미사용: 프로젝트 어디에서도 import하지 않음",
-  "Usage not detected: it may still be used by CI, your editor or other tools": "사용 확인 안 됨: CI, 에디터, 다른 도구에서 쓰일 수 있음"
+  "Usage not detected: it may still be used by CI, your editor or other tools": "사용 확인 안 됨: CI, 에디터, 다른 도구에서 쓰일 수 있음",
+  "(root)": "(루트)",
+  "Package: {0}": "패키지: {0}"
 }

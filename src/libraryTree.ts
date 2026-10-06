@@ -15,8 +15,9 @@ import {
   resolveRegistry,
 } from "./npmrc";
 import { detectPackageManager } from "./packageManager";
+import { discoverWorkspacePackages } from "./workspaces";
 
-type TreeItemType = "workspace" | "library" | "info";
+type TreeItemType = "workspace" | "package" | "library" | "info";
 
 export class LibraryTreeItem extends vscode.TreeItem {
   constructor(
@@ -24,7 +25,9 @@ export class LibraryTreeItem extends vscode.TreeItem {
     collapsibleState: vscode.TreeItemCollapsibleState,
     public readonly type: TreeItemType,
     public readonly workspaceFolder?: vscode.WorkspaceFolder,
-    public readonly library?: LibraryInfo
+    public readonly library?: LibraryInfo,
+    /** 모노레포 패키지 줄이 가리키는 package.json 폴더 */
+    public readonly packageDir?: string
   ) {
     super(label, collapsibleState);
   }
@@ -46,8 +49,10 @@ export class LibraryTreeDataProvider
 
   constructor(private readonly metadataService: LibraryMetadataService) {
     if (vscode.workspace.workspaceFolders?.length) {
-      this.watcher =
-        vscode.workspace.createFileSystemWatcher("**/package.json");
+      // pnpm-workspace.yaml이 바뀌면 모노레포 패키지 목록도 바뀐다
+      this.watcher = vscode.workspace.createFileSystemWatcher(
+        "**/{package.json,pnpm-workspace.yaml}"
+      );
       this.watcher.onDidChange(() => this.refresh());
       this.watcher.onDidCreate(() => this.refresh());
       this.watcher.onDidDelete(() => this.refresh());
@@ -73,10 +78,69 @@ export class LibraryTreeDataProvider
     }
 
     if (element.type === "workspace" && element.workspaceFolder) {
-      return this.getLibrariesForPackage(element.workspaceFolder);
+      return this.getWorkspaceChildren(element.workspaceFolder);
+    }
+
+    if (element.type === "package" && element.workspaceFolder) {
+      return this.getLibrariesForPackage(
+        element.workspaceFolder,
+        element.packageDir
+      );
     }
 
     return [];
+  }
+
+  /**
+   * 워크스페이스 폴더를 펼쳤을 때의 항목.
+   * 모노레포면 루트와 하위 패키지를 나란히 보여주고, 아니면 라이브러리를 바로 보여준다.
+   */
+  private async getWorkspaceChildren(
+    folder: vscode.WorkspaceFolder
+  ): Promise<LibraryTreeItem[]> {
+    const root = folder.uri.fsPath;
+    const pkg = await readPackageJson(folder);
+    const packages = pkg ? await discoverWorkspacePackages(root, pkg) : [];
+
+    if (!packages.length) {
+      return this.getLibrariesForPackage(folder);
+    }
+
+    const rootName = typeof pkg?.name === "string" ? pkg.name : undefined;
+    return [
+      this.createPackageItem(folder, vscode.l10n.t("(root)"), root, rootName),
+      ...packages.map((workspacePackage) =>
+        this.createPackageItem(
+          folder,
+          workspacePackage.relativePath,
+          workspacePackage.dir,
+          workspacePackage.name
+        )
+      ),
+    ];
+  }
+
+  private createPackageItem(
+    folder: vscode.WorkspaceFolder,
+    label: string,
+    packageDir: string,
+    name?: string
+  ) {
+    const item = new LibraryTreeItem(
+      label,
+      vscode.TreeItemCollapsibleState.Collapsed,
+      "package",
+      folder,
+      undefined,
+      packageDir
+    );
+    item.iconPath = new vscode.ThemeIcon("package");
+    item.description = name;
+    item.tooltip = name
+      ? `${packageDir}\n${vscode.l10n.t("Package: {0}", name)}`
+      : packageDir;
+    item.contextValue = "workspacePackage";
+    return item;
   }
 
   private async getWorkspaceItems(): Promise<LibraryTreeItem[]> {
@@ -157,13 +221,21 @@ export class LibraryTreeDataProvider
       );
 
       const registryConfig = await readRegistryConfig(packageDir);
+      const internalNames = await workspacePackageNames(
+        folder,
+        root,
+        packageDir,
+        pkg
+      );
 
       const items = await Promise.all(
         libraries.map(async (lib) => {
           lib.usage = classifyUsage(lib, evidence);
           lib.registry = resolveRegistry(registryConfig, lib.name);
-          // workspace:, file:, git 주소처럼 레지스트리에 없는 패키지는 조회하지 않는다
-          const lookup = isRegistrySpecifier(lib.version);
+          // workspace:, file:, git 주소처럼 레지스트리에 없는 패키지는 조회하지 않는다.
+          // npm·yarn 모노레포는 내부 패키지를 "*" 같은 버전 범위로 적으므로 이름으로도 거른다.
+          const lookup =
+            isRegistrySpecifier(lib.version) && !internalNames.has(lib.name);
           const [metadata, installedVersion] = await Promise.all([
             lookup
               ? this.metadataService.getMetadata(lib).catch(() => null)
@@ -276,6 +348,30 @@ async function readPackageJson(
   } catch {
     return undefined;
   }
+}
+
+/**
+ * 모노레포 안의 패키지 이름(루트 포함). 모노레포가 아니면 빈 집합이다.
+ */
+async function workspacePackageNames(
+  folder: vscode.WorkspaceFolder,
+  root: string,
+  packageDir: string,
+  pkg: Record<string, unknown>
+): Promise<Set<string>> {
+  const rootPkg = packageDir === root ? pkg : await readPackageJson(folder);
+  if (!rootPkg) {
+    return new Set();
+  }
+  const packages = await discoverWorkspacePackages(root, rootPkg);
+  if (!packages.length) {
+    return new Set();
+  }
+  return new Set(
+    [rootPkg.name, ...packages.map((p) => p.name)].filter(
+      (name): name is string => typeof name === "string"
+    )
+  );
 }
 
 /**

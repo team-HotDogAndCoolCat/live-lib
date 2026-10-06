@@ -16,6 +16,7 @@ A VS Code extension for managing npm libraries in your project.
 - **Update Libraries**: Update to the latest version. Major updates outside your `package.json` range ask for confirmation first and offer the latest version within the range instead
 - **Detect Unused Libraries**: Identify libraries that are not actually used in the project
 - **Delete Libraries**: Remove unnecessary libraries
+- **Monorepo Support**: Shows the root and each workspace package side by side (npm, yarn and bun `workspaces`, pnpm `pnpm-workspace.yaml`)
 
 ## Usage
 
@@ -32,6 +33,14 @@ A VS Code extension for managing npm libraries in your project.
 - VS Code 1.74 or later
 - Node.js project (requires `package.json` file)
 - npm, pnpm, yarn or bun. The package manager is detected from the `packageManager` field in `package.json` or from the lockfile, and Update / Delete run the matching command (for example `pnpm add` / `pnpm remove`).
+
+## Monorepos
+
+If the root `package.json` has `workspaces` (npm, yarn, bun) or the folder has a `pnpm-workspace.yaml` (pnpm), the folder in the tree lists `(root)` and each workspace package, such as `apps/web` or `packages/ui`. Expand a package to see its libraries.
+
+- Update and Delete run in that package's folder, so only its `package.json` changes.
+- Installed versions are found in the package's `node_modules` or, when hoisted, in the root `node_modules`.
+- A package's libraries are checked for usage in that package's folder only. Libraries in the root `package.json` are checked across the whole repository, since workspace packages often import shared dependencies declared at the root.
 
 ## Private and Custom Registries
 
@@ -53,6 +62,7 @@ The interface follows VS Code's display language. English is the default, and Ko
 
 - Usage detection looks at `import` / `require` statements, `package.json` scripts and config files. Imports built from variables (for example `require(name)`) cannot be detected.
 - A devDependency with no usage found is shown as **not detected** instead of unused, because tools are often used indirectly (for example `webpack-cli` through `webpack`). Check these before removing them.
+- In a monorepo, open the repository root. If you open only a workspace package folder (for example `apps/web`), versions installed in the root `node_modules` are not found.
 - The usage scan skips build output folders such as `dist`, `build`, `out` and `coverage` at any depth, plus folders listed in `.gitignore`. Source code kept in a folder with one of those names (for example `src/build/`) is not scanned.
 
 ## Feedback
