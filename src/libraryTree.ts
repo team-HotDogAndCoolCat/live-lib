@@ -15,7 +15,7 @@ import {
   resolveRegistry,
 } from "./npmrc";
 import { detectPackageManager } from "./packageManager";
-import { discoverWorkspacePackages } from "./workspaces";
+import { discoverWorkspacePackages, findWorkspaceRoot } from "./workspaces";
 
 type TreeItemType = "workspace" | "package" | "library" | "info";
 
@@ -189,14 +189,16 @@ export class LibraryTreeDataProvider
   /**
    * package.json 하나의 라이브러리 목록을 만든다.
    * packageDir를 주지 않으면 워크스페이스 폴더 루트의 package.json을 읽는다.
-   * 모노레포 하위 패키지면 설치 버전은 워크스페이스 루트까지 올라가며 찾고,
+   * 모노레포 하위 패키지면 설치 버전은 모노레포 루트까지 올라가며 찾고,
    * 사용 여부는 그 패키지 폴더 안에서만 판단한다.
+   * 하위 패키지 폴더만 따로 열었으면 그 위의 모노레포 루트를 기준으로 삼는다.
    */
   async getLibrariesForPackage(
     folder: vscode.WorkspaceFolder,
     packageDir: string = folder.uri.fsPath
   ): Promise<LibraryTreeItem[]> {
-    const root = folder.uri.fsPath;
+    const root =
+      (await findWorkspaceRoot(folder.uri.fsPath)) ?? folder.uri.fsPath;
     const packageJsonPath = path.join(packageDir, "package.json");
 
     try {
@@ -217,12 +219,12 @@ export class LibraryTreeDataProvider
         pkg,
         libraries,
         folder,
+        root,
         packageDir
       );
 
       const registryConfig = await readRegistryConfig(packageDir);
       const internalNames = await workspacePackageNames(
-        folder,
         root,
         packageDir,
         pkg
@@ -288,9 +290,9 @@ export class LibraryTreeDataProvider
     pkg: Record<string, unknown>,
     libraries: LibraryInfo[],
     folder: vscode.WorkspaceFolder,
+    root: string,
     packageDir: string
   ): Promise<UsageEvidence> {
-    const root = folder.uri.fsPath;
     const readGitignore = (dir: string) =>
       fs.readFile(path.join(dir, ".gitignore"), "utf8").catch(() => "");
     const gitignores = [await readGitignore(root)];
@@ -339,11 +341,14 @@ export class LibraryTreeDataProvider
 async function readPackageJson(
   folder: vscode.WorkspaceFolder
 ): Promise<Record<string, unknown> | undefined> {
+  return readPackageJsonIn(folder.uri.fsPath);
+}
+
+async function readPackageJsonIn(
+  dir: string
+): Promise<Record<string, unknown> | undefined> {
   try {
-    const contents = await fs.readFile(
-      path.join(folder.uri.fsPath, "package.json"),
-      "utf8"
-    );
+    const contents = await fs.readFile(path.join(dir, "package.json"), "utf8");
     return JSON.parse(contents);
   } catch {
     return undefined;
@@ -354,12 +359,11 @@ async function readPackageJson(
  * 모노레포 안의 패키지 이름(루트 포함). 모노레포가 아니면 빈 집합이다.
  */
 async function workspacePackageNames(
-  folder: vscode.WorkspaceFolder,
   root: string,
   packageDir: string,
   pkg: Record<string, unknown>
 ): Promise<Set<string>> {
-  const rootPkg = packageDir === root ? pkg : await readPackageJson(folder);
+  const rootPkg = packageDir === root ? pkg : await readPackageJsonIn(root);
   if (!rootPkg) {
     return new Set();
   }
@@ -386,10 +390,7 @@ async function withRootPackageManagerField(
   if (packageDir === root || pkg.packageManager !== undefined) {
     return pkg;
   }
-  const rootPkg = await fs
-    .readFile(path.join(root, "package.json"), "utf8")
-    .then(JSON.parse, () => undefined)
-    .catch(() => undefined);
+  const rootPkg = await readPackageJsonIn(root);
   return rootPkg?.packageManager !== undefined
     ? { ...pkg, packageManager: rootPkg.packageManager }
     : pkg;
