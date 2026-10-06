@@ -5,6 +5,7 @@ import { promises as fs } from "fs";
 import {
   discoverWorkspacePackages,
   findWorkspacePackages,
+  findWorkspaceRoot,
   globToRegExp,
   parsePnpmWorkspaceYaml,
   parseWorkspacesField,
@@ -204,5 +205,64 @@ suite("findWorkspacePackages", () => {
   test("모노레포가 아니면 빈 배열", async () => {
     assert.strictEqual(await readWorkspacePatterns(root, {}), undefined);
     assert.deepStrictEqual(await discoverWorkspacePackages(root, {}), []);
+  });
+});
+
+suite("findWorkspaceRoot", () => {
+  let base: string;
+
+  const write = async (file: string, contents: string | object) => {
+    const full = path.join(base, ...file.split("/"));
+    await fs.mkdir(path.dirname(full), { recursive: true });
+    await fs.writeFile(
+      full,
+      typeof contents === "string" ? contents : JSON.stringify(contents)
+    );
+  };
+  const dir = (relative: string) => path.join(base, ...relative.split("/"));
+
+  setup(async () => {
+    base = await fs.mkdtemp(path.join(os.tmpdir(), "live-lib-wsroot-"));
+  });
+
+  teardown(async () => {
+    await fs.rm(base, { recursive: true, force: true });
+  });
+
+  test("선언된 하위 패키지면 모노레포 루트를 찾는다", async () => {
+    await fs.mkdir(dir("repo/.git"), { recursive: true });
+    await write("repo/package.json", { workspaces: ["apps/*"] });
+    await write("repo/apps/web/package.json", { name: "web" });
+    assert.strictEqual(await findWorkspaceRoot(dir("repo/apps/web")), dir("repo"));
+  });
+
+  test("pnpm-workspace.yaml로 선언된 패키지도 찾는다", async () => {
+    await fs.mkdir(dir("repo/.git"), { recursive: true });
+    await write("repo/package.json", { name: "root" });
+    await write("repo/pnpm-workspace.yaml", "packages:\n  - packages/*\n");
+    await write("repo/packages/ui/package.json", { name: "ui" });
+    assert.strictEqual(await findWorkspaceRoot(dir("repo/packages/ui")), dir("repo"));
+  });
+
+  test("같은 저장소 안이라도 선언되지 않은 폴더는 undefined", async () => {
+    await fs.mkdir(dir("repo/.git"), { recursive: true });
+    await write("repo/package.json", { workspaces: ["apps/*"] });
+    await write("repo/tools/script/package.json", { name: "script" });
+    assert.strictEqual(await findWorkspaceRoot(dir("repo/tools/script")), undefined);
+  });
+
+  test("모노레포 루트 자신을 열었으면 undefined", async () => {
+    await fs.mkdir(dir("repo/.git"), { recursive: true });
+    await write("repo/package.json", { workspaces: ["apps/*"] });
+    assert.strictEqual(await findWorkspaceRoot(dir("repo")), undefined);
+  });
+
+  test("저장소 루트(.git)보다 위로는 올라가지 않는다", async () => {
+    // 저장소 밖의 폴더가 우연히 이 패키지를 가리키는 workspaces를 갖고 있어도 무시한다
+    await write("package.json", { workspaces: ["repo/apps/*"] });
+    await fs.mkdir(dir("repo/.git"), { recursive: true });
+    await write("repo/package.json", { name: "repo" });
+    await write("repo/apps/web/package.json", { name: "web" });
+    assert.strictEqual(await findWorkspaceRoot(dir("repo/apps/web")), undefined);
   });
 });
