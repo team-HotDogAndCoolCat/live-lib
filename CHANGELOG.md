@@ -4,6 +4,20 @@ All notable changes to the "Live Lib" extension will be documented in this file.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Monorepo support. When the root `package.json` has `workspaces` (npm, yarn, bun) or the folder has a `pnpm-workspace.yaml` (pnpm), the tree shows `(root)` and each workspace package side by side, and each package expands to its own libraries. Glob patterns (`apps/*`, `packages/**`) and `!` exclusions are supported.
+- Update and Delete run in the package's folder, so only that package's `package.json` changes.
+- Dependencies on other packages in the same monorepo (for example `"@acme/ui": "*"` in npm or yarn workspaces) are no longer looked up in the registry, so a public package with the same name can no longer show up as their latest version.
+
+### Changed
+
+- Installed versions and executables are also looked up in parent `node_modules` folders up to the workspace root, so libraries hoisted by npm or yarn are no longer shown as not installed.
+- A workspace package's libraries are checked for usage in that package's folder only, while root libraries are checked across the whole repository.
+- The tree also refreshes when `pnpm-workspace.yaml` changes.
+
 ## [1.3.2] - 2026-10-05
 
 ### Changed
