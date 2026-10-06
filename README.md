@@ -62,7 +62,6 @@ The interface follows VS Code's display language. English is the default, and Ko
 
 - Usage detection looks at `import` / `require` statements, `package.json` scripts and config files. Imports built from variables (for example `require(name)`) cannot be detected.
 - A devDependency with no usage found is shown as **not detected** instead of unused, because tools are often used indirectly (for example `webpack-cli` through `webpack`). Check these before removing them.
-- In a monorepo, open the repository root. If you open only a workspace package folder (for example `apps/web`), versions installed in the root `node_modules` are not found.
 - The usage scan skips build output folders such as `dist`, `build`, `out` and `coverage` at any depth, plus folders listed in `.gitignore`. Source code kept in a folder with one of those names (for example `src/build/`) is not scanned.
 
 ## Feedback

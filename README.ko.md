@@ -62,7 +62,6 @@ Live Lib은 `_authToken` 같은 인증 정보를 보내지 않습니다. 인증�
 
 - 사용 여부는 `import` / `require` 구문, `package.json`의 scripts, 설정 파일을 보고 판단합니다. 변수로 만든 경로(예: `require(name)`)는 감지하지 못합니다.
 - 사용 근거를 찾지 못한 devDependency는 미사용 대신 **not detected**로 표시합니다. 도구는 간접적으로 쓰이는 경우가 많기 때문입니다(예: `webpack`이 내부에서 쓰는 `webpack-cli`). 삭제하기 전에 한 번 확인해 주세요.
-- 모노레포에서는 저장소 루트를 여세요. 워크스페이스 패키지 폴더(예: `apps/web`)만 따로 열면 루트 `node_modules`에 설치된 버전을 찾지 못합니다.
 - 사용 여부 스캔은 `dist`, `build`, `out`, `coverage` 같은 빌드 산출물 폴더(깊이와 상관없이)와 `.gitignore`에 적힌 폴더를 건너뜁니다. 이런 이름의 폴더에 소스 코드를 두었다면(예: `src/build/`) 그 코드는 스캔하지 않습니다.
 
 ## 피드백
