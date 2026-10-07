@@ -6,6 +6,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ## [Unreleased]
 
+### Changed
+
+- A library that is not used anywhere in the project is now shown as unused (`circle-slash` icon, `1.0.0 (unused)`) even when a newer version exists, since removing it comes before updating it. The Update button and the latest version in the tooltip are still there. Libraries marked "not detected" keep showing the update first.
+
 ### Fixed
 
 - Opening only a workspace package folder of a monorepo (for example `apps/web`) now uses the monorepo root, just like opening the repository root: versions installed in the root `node_modules` are found, other packages in the monorepo are not looked up in the registry, and the root `packageManager` field is used. Folders that are not declared as workspace packages work as before.
