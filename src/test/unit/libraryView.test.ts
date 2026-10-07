@@ -71,7 +71,23 @@ suite("buildLibraryView", () => {
     assert.strictEqual(view.icon, "circle-slash");
   });
 
-  test("outdated가 unused보다 우선한다", () => {
+  test("업데이트할 수 있어도 미사용이면 미사용 표시를 우선하고 업데이트 버튼은 남긴다", () => {
+    const view = buildLibraryView({
+      ...base,
+      version: "^1.0.0",
+      installedVersion: "1.0.0",
+      latestVersion: "1.2.0",
+      usage: "unused",
+    });
+
+    assert.strictEqual(view.description, "1.0.0 (unused)");
+    assert.strictEqual(view.icon, "circle-slash");
+    assert.strictEqual(view.contextValue, "libraryItemOutdated");
+    assert.ok(view.tooltip.includes("Latest: 1.2.0"));
+    assert.ok(view.tooltip.includes("Unused"));
+  });
+
+  test("major 업데이트가 있어도 미사용이면 미사용 표시를 우선하고 major 경고는 툴팁에 남긴다", () => {
     const view = buildLibraryView({
       ...base,
       version: "^1.0.0",
@@ -80,6 +96,24 @@ suite("buildLibraryView", () => {
       usage: "unused",
     });
 
+    assert.strictEqual(view.description, "1.0.0 (unused)");
+    assert.strictEqual(view.icon, "circle-slash");
+    assert.strictEqual(view.contextValue, "libraryItemOutdated");
+    assert.ok(view.tooltip.includes("Major update"));
+  });
+
+  test("not detected는 업데이트 표시를 그대로 우선한다", () => {
+    const view = buildLibraryView({
+      ...base,
+      scope: "devDependencies",
+      version: "^1.0.0",
+      installedVersion: "1.0.0",
+      latestVersion: "2.0.0",
+      usage: "unverified",
+    });
+
+    assert.strictEqual(view.description, "1.0.0 → 2.0.0 (major)");
+    assert.strictEqual(view.icon, "warning");
     assert.strictEqual(view.contextValue, "libraryItemOutdated");
   });
 

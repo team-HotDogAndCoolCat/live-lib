@@ -49,15 +49,18 @@ export function buildLibraryView(
     versions,
   });
   const outdated = !!plan;
+  const unused = lib.usage === "unused";
   const shownVersion = currentVersion ?? lib.version;
 
+  // 쓰지 않는 라이브러리는 업데이트보다 삭제가 먼저라 미사용 표시를 우선한다.
+  // "not detected"는 실제로 쓰일 수 있어 업데이트 표시를 그대로 둔다.
   let description: string;
-  if (plan?.isMajor) {
+  if (unused) {
+    description = t("{0} (unused)", shownVersion);
+  } else if (plan?.isMajor) {
     description = t("{0} → {1} (major)", shownVersion, plan.latest);
   } else if (outdated) {
     description = `${shownVersion} → ${lib.latestVersion}`;
-  } else if (lib.usage === "unused") {
-    description = t("{0} (unused)", shownVersion);
   } else if (lib.usage === "unverified") {
     description = t("{0} (not detected)", shownVersion);
   } else {
@@ -98,9 +101,10 @@ export function buildLibraryView(
   let icon: string;
   let contextValue: LibraryContextValue;
   if (outdated) {
-    icon = plan?.isMajor ? "warning" : "arrow-circle-up";
+    // 미사용이어도 업데이트 버튼은 남긴다
+    icon = unused ? "circle-slash" : plan?.isMajor ? "warning" : "arrow-circle-up";
     contextValue = "libraryItemOutdated";
-  } else if (lib.usage === "unused") {
+  } else if (unused) {
     icon = "circle-slash";
     contextValue = "libraryItemUnused";
   } else if (lib.usage === "unverified") {
