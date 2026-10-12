@@ -8,6 +8,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Changed
 
+- The Marketplace description is back to the original "Manage your project libraries with ease". New installs stopped after the description was changed in 1.0.1 and did not come back with the 1.3.2 wording.
 - A library that is not used anywhere in the project is now shown as unused (`circle-slash` icon, `1.0.0 (unused)`) even when a newer version exists, since removing it comes before updating it. The Update button and the latest version in the tooltip are still there. Libraries marked "not detected" keep showing the update first.
 
 ### Fixed
