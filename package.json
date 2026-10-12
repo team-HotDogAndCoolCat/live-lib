@@ -1,7 +1,7 @@
 {
   "name": "live-lib",
   "displayName": "Live Lib",
-  "description": "Manage your project's npm libraries in the sidebar: see outdated and unused dependencies, then update or remove them in one click",
+  "description": "Manage your project libraries with ease",
   "publisher": "gugitgugit",
   "version": "1.4.0",
   "icon": "logo.png",
