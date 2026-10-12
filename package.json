@@ -1,6 +1,6 @@
 {
   "name": "live-lib",
-  "displayName": "Live Lib",
+  "displayName": "Live Lib - npm Library Manager",
   "description": "Manage your project libraries with ease",
   "publisher": "gugitgugit",
   "version": "1.4.1",
