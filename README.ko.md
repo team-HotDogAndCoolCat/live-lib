@@ -8,6 +8,8 @@
 
 VS Code 확장으로 프로젝트의 npm 라이브러리를 관리할 수 있는 도구입니다.
 
+<img src="images/tree.png" alt="Live Lib tree showing outdated, unused and not detected libraries with update and delete buttons" width="402">
+
 ## 기능
 
 - **라이브러리 목록 보기**: 프로젝트의 모든 의존성을 한눈에 확인
@@ -26,6 +28,11 @@ VS Code 확장으로 프로젝트의 npm 라이브러리를 관리할 수 있는
    - **세부 정보 보기**: 라이브러리 정보 확인
    - **업데이트**: 최신 버전으로 업데이트 (새 버전이 있을 때만 표시)
    - **삭제**: 라이브러리 제거
+
+   <img src="images/tooltip.png" alt="Tooltip with installed, declared and latest versions" width="585">
+
+   <img src="images/info.png" alt="Library details window" width="282">
+
 4. npm 레지스트리에서 가져온 최신 버전 정보는 VS Code를 다시 켜도 6시간 동안 저장해 두고 씁니다. 바로 다시 확인하려면 패널 위쪽의 새로고침 버튼을 누르세요.
 
 ## 요구사항
@@ -37,6 +44,8 @@ VS Code 확장으로 프로젝트의 npm 라이브러리를 관리할 수 있는
 ## 모노레포
 
 루트 `package.json`에 `workspaces`(npm, yarn, bun)가 있거나 `pnpm-workspace.yaml`(pnpm)이 있으면, 트리의 폴더 아래에 `(root)`와 각 워크스페이스 패키지(예: `apps/web`, `packages/ui`)가 나란히 표시됩니다. 패키지를 펼치면 그 패키지의 라이브러리가 나옵니다.
+
+<img src="images/monorepo.png" alt="Monorepo tree with the root and each workspace package" width="517">
 
 - 업데이트·삭제는 그 패키지 폴더에서 실행되어 해당 패키지의 `package.json`만 바뀝니다.
 - 설치된 버전은 그 패키지의 `node_modules`에서 찾고, 없으면 루트 `node_modules`(호이스팅된 경우)에서 찾습니다.

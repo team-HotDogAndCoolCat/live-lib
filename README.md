@@ -8,6 +8,8 @@
 
 A VS Code extension for managing npm libraries in your project.
 
+<img src="images/tree.png" alt="Live Lib tree showing outdated, unused and not detected libraries with update and delete buttons" width="402">
+
 ## Features
 
 - **View Library List**: See all project dependencies at a glance
@@ -26,6 +28,11 @@ A VS Code extension for managing npm libraries in your project.
    - **Show Details**: View library information
    - **Update**: Update to the latest version (shown only when a newer version exists)
    - **Delete**: Remove the library
+
+   <img src="images/tooltip.png" alt="Tooltip with installed, declared and latest versions" width="585">
+
+   <img src="images/info.png" alt="Library details window" width="282">
+
 4. Latest versions from the npm registry are cached for 6 hours, even across VS Code restarts. Click the refresh button at the top of the view to check the registry again right away.
 
 ## Requirements
@@ -37,6 +44,8 @@ A VS Code extension for managing npm libraries in your project.
 ## Monorepos
 
 If the root `package.json` has `workspaces` (npm, yarn, bun) or the folder has a `pnpm-workspace.yaml` (pnpm), the folder in the tree lists `(root)` and each workspace package, such as `apps/web` or `packages/ui`. Expand a package to see its libraries.
+
+<img src="images/monorepo.png" alt="Monorepo tree with the root and each workspace package" width="517">
 
 - Update and Delete run in that package's folder, so only its `package.json` changes.
 - Installed versions are found in the package's `node_modules` or, when hoisted, in the root `node_modules`.
