@@ -1,12 +1,10 @@
 {
   "Could not load library information.": "라이브러리 정보를 불러올 수 없습니다.",
   "Loading {0}...": "{0} 정보를 불러오는 중...",
-  "Name: {0}": "이름: {0}",
   "Installed: {0}": "설치된 버전: {0}",
   "Not installed": "설치되지 않음",
   "Declared: {0}": "선언된 범위: {0}",
-  "Description": "설명",
-  "Not available.": "정보 없음",
+  "No description available.": "설명이 없습니다.",
   "Homepage: {0}": "홈페이지: {0}",
   "Copy": "복사",
   "Open Homepage": "홈페이지 열기",

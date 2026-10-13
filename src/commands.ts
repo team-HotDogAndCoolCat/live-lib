@@ -14,6 +14,7 @@ import {
   LibraryTreeItem,
   packageManagerSetting,
 } from "./libraryTree";
+import { buildLibraryInfoMessage } from "./libraryView";
 import {
   isSafePackageName,
   isSafeVersion,
@@ -80,23 +81,7 @@ async function showLibraryInfo(
     async () => metadataService.getMetadata(library)
   );
 
-  const detailLines = [
-    t("Name: {0}", library.name),
-    t("Installed: {0}", library.installedVersion ?? t("Not installed")),
-    t("Declared: {0}", library.version),
-  ];
-
-  detailLines.push(
-    "",
-    t("Description"),
-    metadata?.description ?? t("Not available.")
-  );
-
-  if (metadata?.homepage) {
-    detailLines.push("", t("Homepage: {0}", metadata.homepage));
-  }
-
-  const detail = detailLines.join("\n");
+  const info = buildLibraryInfoMessage(library, metadata, t);
 
   const copyAction = t("Copy");
   const openHomepageAction = t("Open Homepage");
@@ -106,13 +91,13 @@ async function showLibraryInfo(
   }
 
   const action = await vscode.window.showInformationMessage(
-    detail,
-    { modal: true },
+    info.title,
+    { modal: true, detail: info.detail },
     ...actions
   );
 
   if (action === copyAction) {
-    await vscode.env.clipboard.writeText(detail);
+    await vscode.env.clipboard.writeText(`${info.title}\n\n${info.detail}`);
     vscode.window.showInformationMessage(t("Library information copied."));
   } else if (action === openHomepageAction && metadata?.homepage) {
     vscode.env.openExternal(vscode.Uri.parse(metadata.homepage));

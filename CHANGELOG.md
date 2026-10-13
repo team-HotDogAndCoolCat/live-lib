@@ -4,6 +4,13 @@ All notable changes to the "Live Lib" extension will be documented in this file.
 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The library details window is easier to read: the name and version are the title, followed by the description, then the installed, declared and latest versions, any warning (major update, unused, not detected), the registry if it is not npmjs, and the homepage. It previously showed everything in bold and left out the latest version and warnings. Copy copies the same text.
+- The tooltip in the tree shows one item per line with the name in bold, instead of one long line.
+
 ## [1.4.2] - 2026-10-12
 
 ### Changed

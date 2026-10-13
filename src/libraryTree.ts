@@ -259,7 +259,7 @@ export class LibraryTreeDataProvider
             lib
           );
           item.description = view.description;
-          item.tooltip = view.tooltip;
+          item.tooltip = buildTooltip(view.tooltipTitle, view.tooltipLines);
           item.iconPath = new vscode.ThemeIcon(view.icon);
           item.contextValue = view.contextValue;
           item.command = {
@@ -336,6 +336,22 @@ export class LibraryTreeDataProvider
     item.tooltip = label;
     return item;
   }
+}
+
+/**
+ * 라이브러리 툴팁. 첫 줄(이름)은 굵게, 나머지는 한 줄에 항목 하나씩 보여준다.
+ * 패키지 이름이나 레지스트리 주소에 들어간 Markdown 문자는 그대로 보이도록 이스케이프한다.
+ */
+function buildTooltip(title: string, lines: string[]) {
+  const tooltip = new vscode.MarkdownString();
+  tooltip.appendMarkdown("**");
+  tooltip.appendText(title);
+  tooltip.appendMarkdown("**");
+  for (const line of lines) {
+    tooltip.appendMarkdown("  \n");
+    tooltip.appendText(line);
+  }
+  return tooltip;
 }
 
 async function readPackageJson(
