@@ -1,5 +1,5 @@
 import * as assert from "assert";
-import { buildLibraryView } from "../../libraryView";
+import { buildLibraryInfoMessage, buildLibraryView } from "../../libraryView";
 
 suite("buildLibraryView", () => {
   const base = {
@@ -137,10 +137,17 @@ suite("buildLibraryView", () => {
       latestVersion: "19.1.0",
     });
 
+    assert.strictEqual(view.tooltipTitle, "react (dependencies)");
+    assert.deepStrictEqual(view.tooltipLines, [
+      "Installed: 18.2.0",
+      "Declared: ^18.0.0",
+      "Latest: 19.1.0",
+      "Major update: outside ^18.0.0, may include breaking changes",
+    ]);
+    // 일반 텍스트 툴팁은 한 줄에 항목 하나
     assert.strictEqual(
       view.tooltip,
-      "react (dependencies) • Installed: 18.2.0 • Declared: ^18.0.0 • Latest: 19.1.0" +
-        " • Major update: outside ^18.0.0, may include breaking changes"
+      [view.tooltipTitle, ...view.tooltipLines].join("\n")
     );
   });
 
@@ -212,5 +219,78 @@ suite("buildLibraryView", () => {
     });
     assert.ok(custom.tooltip.includes("Registry: https://npm.mycompany.com"));
     assert.ok(!npmjs.tooltip.includes("Registry:"));
+  });
+});
+
+suite("buildLibraryInfoMessage", () => {
+  const moment = {
+    name: "moment",
+    scope: "dependencies" as const,
+    version: "^2.31.0",
+    installedVersion: "2.31.0",
+    usage: "unused" as const,
+  };
+
+  test("제목은 이름과 버전, 본문은 설명 → 버전·상태 → 홈페이지 순서다", () => {
+    const info = buildLibraryInfoMessage(moment, {
+      description: "Parse, validate, manipulate, and display dates",
+      homepage: "https://momentjs.com",
+      latestVersion: "2.31.0",
+    });
+
+    assert.strictEqual(info.title, "moment 2.31.0");
+    assert.strictEqual(
+      info.detail,
+      [
+        "Parse, validate, manipulate, and display dates",
+        "",
+        "Installed: 2.31.0",
+        "Declared: ^2.31.0",
+        "Latest: 2.31.0",
+        "Unused: not imported anywhere in the project",
+        "Homepage: https://momentjs.com",
+      ].join("\n")
+    );
+  });
+
+  test("major 업데이트와 범위 밖 경고를 본문에 보여준다", () => {
+    const info = buildLibraryInfoMessage(
+      { ...moment, name: "react", version: "^18.3.1", installedVersion: "18.3.1", usage: "used" },
+      { latestVersion: "19.3.0" }
+    );
+
+    assert.strictEqual(info.title, "react 18.3.1");
+    assert.ok(info.detail.includes("Latest: 19.3.0"));
+    assert.ok(info.detail.includes("Major update: outside ^18.3.1"));
+  });
+
+  test("설명과 홈페이지가 없으면 안내 문구만 보여주고 홈페이지 줄은 뺀다", () => {
+    const info = buildLibraryInfoMessage(moment, null);
+
+    assert.ok(info.detail.startsWith("No description available.\n\n"));
+    assert.ok(!info.detail.includes("Homepage"));
+  });
+
+  test("정보 창에서 받은 최신 버전이 없으면 트리에서 받아 둔 값을 쓴다", () => {
+    const info = buildLibraryInfoMessage({ ...moment, latestVersion: "2.30.0" }, undefined);
+    assert.ok(info.detail.includes("Latest: 2.30.0"));
+  });
+
+  test("설치되지 않았으면 제목에 선언된 범위를 쓴다", () => {
+    const info = buildLibraryInfoMessage(
+      { ...moment, installedVersion: undefined },
+      { description: "dates" }
+    );
+    assert.strictEqual(info.title, "moment ^2.31.0");
+    assert.ok(info.detail.includes("Not installed"));
+  });
+
+  test("사내 레지스트리와 조회 실패를 본문에 보여준다", () => {
+    const info = buildLibraryInfoMessage(
+      { ...moment, registry: "https://npm.mycompany.com", latestLookupFailed: true },
+      null
+    );
+    assert.ok(info.detail.includes("Registry: https://npm.mycompany.com"));
+    assert.ok(info.detail.includes("Latest: not available (registry lookup failed)"));
   });
 });
